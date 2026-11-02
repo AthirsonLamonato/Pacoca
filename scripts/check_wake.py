@@ -10,13 +10,11 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import socket
 import sys
 import time
 import wave
 
 import httpx
-import websockets
 import psutil
 from playwright.async_api import async_playwright
 
@@ -33,6 +31,7 @@ async def main():
     data = ROOT / '.test-data' / name
     data.mkdir(parents=True, exist_ok=True)
     connection = data / 'connection.json'; connection.unlink(missing_ok=True)
+    native_ready=data/'rendered.json';native_ready.unlink(missing_ok=True)
     # A long silent lead measures standby without loading transcription or chat.
     fake = data / 'microphone.wav'
     with wave.open(str(ROOT / 'tests_next/fixtures/wake/02.wav')) as w:
@@ -57,10 +56,12 @@ async def main():
     env['QTWEBENGINE_CHROMIUM_FLAGS'] = ' '.join('"'+x+'"' if ' ' in x else x for x in flags)
     command = [str(args.exe.resolve())] if args.exe else [sys.executable, str(ROOT/'run-pacoca.py'), '--headless']
     if args.exe:
-        command += ['--minimized']
-        with socket.socket() as sock:
-            sock.bind(('127.0.0.1',0)); debug_port = sock.getsockname()[1]
-        env['QTWEBENGINE_REMOTE_DEBUGGING'] = '127.0.0.1:'+str(debug_port)
+        for key in ('PYTHONPATH','PYTHONHOME','VIRTUAL_ENV'):
+            env.pop(key,None)
+        windows=Path(os.environ.get('SystemRoot',r'C:\Windows'))
+        env['PATH']=';'.join(str(p) for p in (windows/'System32',windows,windows/'System32/WindowsPowerShell/v1.0'))
+        if (args.exe.resolve().parent/'assets/manifest.json').is_file():env.pop('PACOCA_ASSETS',None)
+        command += ['--minimized','--native-ready-file',str(native_ready)]
     process = subprocess.Popen(command+['--connection-file',str(connection)],env=env,cwd=ROOT,
                                creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     browser = client = None
@@ -116,20 +117,9 @@ async def main():
                     return
                 await page.wait_for_function('() => state.wake.ready',timeout=30000)
             else:
-                async def native_state():
-                    async with httpx.AsyncClient(trust_env=False) as debug:
-                        targets=(await debug.get('http://127.0.0.1:'+str(debug_port)+'/json/list')).json()
-                    target=next(t for t in targets if t['type']=='page')
-                    async with websockets.connect(target['webSocketDebuggerUrl']) as channel:
-                        await channel.send(json.dumps({'id':1,'method':'Runtime.evaluate','params':{'expression':'JSON.stringify({label:document.querySelector(\"#wake-label\")?.textContent,starting:Boolean(state.captureStarting),stream:Boolean(state.stream),context:state.context?.state,failed:state.wake.failed,ready:state.wake.ready,connecting:state.wake.connecting})','returnByValue':True}}))
-                        while True:
-                            response=json.loads(await channel.recv())
-                            if response.get('id')==1:return response
-                await asyncio.sleep(3)
-                print('NATIVE UI',json.dumps(await native_state()),flush=True)
                 deadline = time.monotonic()+30
-                while not (await client.get('/api/status')).json()['wake']['pid']:
-                    if time.monotonic()>deadline: raise TimeoutError('Minimized native microphone did not start: '+str(await native_state()))
+                while not native_ready.exists() or not (await client.get('/api/status')).json()['wake']['pid']:
+                    if time.monotonic()>deadline: raise TimeoutError('Minimized native microphone did not start')
                     await asyncio.sleep(.3)
             root = psutil.Process(process.pid)
             before = {p.pid:sum(p.cpu_times()[:2]) for p in [root,*root.children(recursive=True)]}
