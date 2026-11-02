@@ -1788,3 +1788,8 @@ body.voice-active #mic-button {
   font-weight: 600;
   color: var(--text);
 }
+
+.wake-status { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; color:var(--text-muted, #a5a3ad); padding:8px 4px; }
+.wake-status button { background:transparent; color:inherit; border:1px solid #7774; border-radius:8px; padding:6px 10px; cursor:pointer; font:inherit; }
+.wake-status.listening { color:var(--accent, #d3af83); }
+.wake-status.listening button:hover { background:#b68b531a; }

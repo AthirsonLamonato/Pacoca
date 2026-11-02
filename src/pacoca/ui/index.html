@@ -160,6 +160,10 @@
             ><button id="stop-response">Parar</button>
           </div>
           <div class="composer-wrap">
+            <div id="wake-status" class="wake-status" role="status">
+              <span id="wake-label">Microfone pausado</span>
+              <button id="wake-toggle" type="button">Ativar “Paçoca”</button>
+            </div>
             <div id="voice-session" class="voice-session" hidden>
               <span class="voice-live-dot"></span
               ><span id="voice-state">Estou ouvindo você</span>
@@ -318,6 +322,9 @@
             </div>
             <div class="settings-card">
               <h2>♫ Nossa conversa</h2>
+              <label class="switch-row"><span>Ouvir quando eu disser “Paçoca”<small>Escuta local com o aplicativo aberto, inclusive minimizado. Use “Pausar microfone” para desligar.</small></span><input id="setting-wake" type="checkbox" /></label>
+              <label>Sensibilidade da chamada<select id="setting-wake-sensitivity"><option value="low">Menor · menos ativações por engano</option><option value="normal">Normal</option><option value="high">Maior · para voz baixa</option></select></label>
+              <label>Voltar a esperar a chamada<select id="setting-wake-timeout"><option value="10">Após 10 segundos sem conversa</option><option value="20">Após 20 segundos sem conversa</option><option value="40">Após 40 segundos sem conversa</option><option value="60">Após 1 minuto sem conversa</option></select></label>
               <label
                 >Microfone<select id="setting-mic">
                   <option value="">Microfone padrão</option>

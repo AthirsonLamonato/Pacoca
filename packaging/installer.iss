@@ -1,7 +1,7 @@
 #ifndef ProjectRoot
   #define ProjectRoot SourcePath + "\.."
 #endif
-#define Version "1.1.1"
+#define Version "1.2.0"
 #include ProjectRoot + "\build\model-download.iss"
 
 [Setup]

@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pacoca-desktop"
-version = "1.1.1"
+version = "1.2.0"
 description = "Sua inteligência pessoal. No seu computador."
 requires-python = ">=3.12"
 dependencies = [
   "fastapi", "uvicorn", "httpx", "pydantic", "python-multipart", "numpy",
-  "faster-whisper", "piper-tts", "PySide6", "psutil", "playwright", "pillow", "pypdf",
+  "pocketsphinx==5.0.4", "faster-whisper", "piper-tts", "PySide6", "psutil", "playwright", "pillow", "pypdf",
   "pywinauto; sys_platform == 'win32'", "pycaw; sys_platform == 'win32'",
   "comtypes; sys_platform == 'win32'", "ask-sdk-webservice-support", "cryptography", "packaging",
   "winrt-Windows.Media.Control; sys_platform == 'win32'",
@@ -27,7 +27,7 @@ pacoca = "pacoca.desktop:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-pacoca = ["ui/*", "*.ps1", "runtime-id.txt"]
+pacoca = ["ui/*", "*.ps1", "runtime-id.txt", "wake.dic"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests_next"]

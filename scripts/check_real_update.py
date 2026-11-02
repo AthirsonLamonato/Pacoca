@@ -14,6 +14,7 @@ import psutil
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
+from pacoca import __version__
 from pacoca.config import Settings
 from pacoca.store import Store
 from pacoca.update_format import sha256
@@ -36,7 +37,7 @@ def main():
     # Bind first; every package URL and the manifest are signed for this QA server.
     server=ThreadingHTTPServer(('127.0.0.1',0),functools.partial(QuietHandler,directory=str(base/'feed')))
     feed=f'http://127.0.0.1:{server.server_port}'
-    subprocess.run([sys.executable,'scripts/package_update.py','--app-only','--output',str(base/'feed'),'--base-url',feed],cwd=ROOT,check=True)
+    subprocess.run([sys.executable,'scripts/package_update.py','--output',str(base/'feed'),'--base-url',feed],cwd=ROOT,check=True)
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     connection=data/'instance.json';connection.unlink(missing_ok=True)
     for p in [data/'Updates/last-result.json']:p.unlink(missing_ok=True)
@@ -48,7 +49,7 @@ def main():
     started=time.monotonic();process=subprocess.Popen([str(root/'Pacoca.exe'),'--update-feed',feed+'/desktop-update.json'],env=env,cwd=root,creationflags=subprocess.CREATE_NO_WINDOW)
     client=None;new_client=None;phases=[]
     try:
-        deadline=time.monotonic()+200
+        deadline=time.monotonic()+300
         while not connection.exists():
             if process.poll() is not None:raise RuntimeError('Baseline exited before startup')
             if time.monotonic()>deadline:raise TimeoutError('Baseline startup')
@@ -56,8 +57,8 @@ def main():
         old=json.loads(connection.read_text())
         client=httpx.Client(base_url=f"http://127.0.0.1:{old['port']}",headers={'X-Pacoca-Token':old['token']},trust_env=False,timeout=10)
         initial=client.get('/api/status').json()
-        assert initial['version']=='1.1.0' and not initial['engine']['loaded']
-        # This QA prototype predates the cold-boot check fix; initiate its first check.
+        assert initial['version']=='1.1.1' and not initial['engine']['loaded']
+        # Initiate a check now rather than wait for the periodic public channel check.
         client.post('/api/updates/check').raise_for_status()
         receipt=data/'Updates/last-result.json'
         while not receipt.exists():
@@ -71,12 +72,14 @@ def main():
         result=json.loads(receipt.read_text(encoding='utf-8-sig'))
         assert result['status']=='installed',result
         health=json.loads((Path(result['transaction'])/'health.json').read_text())
-        assert health['rendered'] and health['version']=='1.1.1' and health['pid']!=process.pid
+        assert health['rendered'] and health['version']==__version__ and health['pid']!=process.pid
         current=json.loads(connection.read_text())
         new_client=httpx.Client(base_url=f"http://127.0.0.1:{current['port']}",headers={'X-Pacoca-Token':current['token']},trust_env=False,timeout=10)
         status=new_client.get('/api/status').json()
-        assert status['version']=='1.1.1' and not status['engine']['loaded'] and not status['voice']['pid']
+        assert status['version']==__version__ and not status['engine']['loaded'] and not status['voice']['pid']
         assert any(m['content']==marker for m in new_client.get('/api/memories').json())
+        assert (root/'_internal/wakeword/en-us/mdef').is_file()
+        assert (root/'_internal/pacoca/wake.dic').is_file()
         assert (model.stat().st_size,model.stat().st_mtime_ns)==model_before
         assert (Path(result['transaction'])/'database.sqlite3').exists()
         new_client.post('/api/shutdown');new_client.close();new_client=None
@@ -92,8 +95,8 @@ def main():
         while new_client.get('/api/updates').json()['phase']!='current':
             if time.monotonic()>deadline:raise TimeoutError('Initial automatic check after a recent Windows boot')
             time.sleep(.4)
-        report={'from':'1.1.0','to':'1.1.1','seconds':round(time.monotonic()-started,2),'phases':phases,
-            'actual_qt_health':health,'baseline_initial_check':'explicit API; old QA prototype',
+        report={'from':'1.1.1','to':__version__,'seconds':round(time.monotonic()-started,2),'phases':phases,
+            'actual_qt_health':health,'baseline_initial_check':'API followed by automatic download and install',
             'automatic_download_install':True,'signed_manifest':True,
             'final_cold_automatic_check':True,
             'model_untouched':True,'memory_preserved':True,'sqlite_backup':True,'no_inference_on_restart':True,

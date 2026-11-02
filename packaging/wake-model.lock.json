@@ -1,0 +1,15 @@
+{
+  "package": "pocketsphinx==5.0.4",
+  "model": "en-us/en-us",
+  "files": {
+    "feat.params": "d3d506732e1ae0bf1a9cd0ff6e74103aff3fbe5c4f00f7f20655000a8ed560da",
+    "mdef": "2360f9a86889c1cfee8bd618a0269387911e5fb2920a594f506b18b8c79683b0",
+    "means": "832019e32cac12eb318964f96f469034acb12d0348eeddc3831831a100cb4dd4",
+    "noisedict": "1b223ef144429cb6f174bc75b06d11df651de6621d8add1655458d89f0913cff",
+    "README": "dc05e4e8e270fc059f9775535a8c59dfcc036fa4d3f8043e7387efe10036698c",
+    "sendump": "8c9564c0d5bef69ca9d9bf1014abe162f071644cf02cf1fa8a483c3dc165a7a8",
+    "transition_matrices": "c1f7f28ea43177be734be1f88bd7f1b9a853d0e660f8599c67c6eaeca8bb539a",
+    "variances": "b00d696f85e96834fc10f8e5f06428d8c4db6bffdbe5845b6f69bf6efbc48fa5"
+  },
+  "namespace_marker": "pocketsphinx/model/README"
+}

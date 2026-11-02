@@ -1,4 +1,4 @@
-Paçoca 1.0 — distribuição local
+Paçoca 1.2 — distribuição local
 
 A nova aplicação Paçoca é disponibilizada sob GNU GPL versão 3 ou posterior.
 O código-fonte correspondente da aplicação acompanha a instalação em source/Pacoca-source.zip.
@@ -6,6 +6,7 @@ O código-fonte correspondente da aplicação acompanha a instalação em source
 A distribuição inclui componentes com suas próprias licenças, preservadas na pasta licenses:
 - llama.cpp: MIT
 - Qwen3: Apache 2.0
+- PocketSphinx e modelo acústico CMU/Alpha Cephei: BSD; aviso do modelo em _internal/wakeword/en-us/README
 - faster-whisper e Whisper: MIT
 - Piper: GNU GPL 3.0; modelo de voz sujeito ao MODEL_CARD incluído
 - PySide6/Qt: LGPL/GPL e licenças de terceiros do Qt/Chromium

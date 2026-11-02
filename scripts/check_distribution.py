@@ -42,7 +42,7 @@ def main():
     if not args.native:
         command.append('--headless')
     else:
-        command.extend(['--native-ready-file',str(native_ready)])
+        command.extend(['--minimized','--native-ready-file',str(native_ready)])
     process = subprocess.Popen(command, cwd=ROOT, env=env, creationflags=subprocess.CREATE_NO_WINDOW)
     client = None
     passed = False

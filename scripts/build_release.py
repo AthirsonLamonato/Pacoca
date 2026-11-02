@@ -159,7 +159,8 @@ def main():
     icon()
     if not args.skip_executable:
         dependencies=(ROOT/'packaging/requirements.lock').read_text(encoding='utf-8-sig').encode('utf-8')
-        identity=hashlib.sha256(dependencies+platform.python_version().encode()+b'pacoca-runtime-2').hexdigest()
+        wake_model=json.dumps(json.loads((ROOT/'packaging/wake-model.lock.json').read_text(encoding='utf-8')),sort_keys=True,separators=(',',':')).encode('utf-8')
+        identity=hashlib.sha256(dependencies+wake_model+platform.python_version().encode()+b'pacoca-runtime-3-wakeword').hexdigest()
         (ROOT/'src/pacoca/runtime-id.txt').write_text(identity+'\n',encoding='utf-8')
         # A module edited during an earlier analysis can predate the cached PYZ,
         # making incremental timestamp checks reuse stale code. Always rebuild.

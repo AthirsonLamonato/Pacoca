@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import secrets
 import sys
+import time
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -27,6 +28,7 @@ from .tools import ToolRegistry, index_folder
 from .resources import ResourcePolicy
 from .updates import UpdateManager,FEED
 from .actions import DesktopActions
+from .wake import WakeService
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +40,9 @@ class ChangeSettings(BaseModel):
     voice_speed: float | None = Field(default=None,ge=.7,le=1.4)
     microphone_id: str | None = Field(default=None,max_length=500)
     output_id: str | None = Field(default=None,max_length=500)
+    wake_enabled: bool | None = None
+    wake_sensitivity: str | None = Field(default=None,pattern='^(low|normal|high)$')
+    wake_timeout: int | None = Field(default=None,ge=10,le=60)
     theme: str | None = Field(default=None,pattern="^(dark|light)$")
     backend: str | None = Field(default=None,pattern="^(auto|cpu)$")
     model_profile: str | None = Field(default=None,pattern="^(light|advanced)$")
@@ -77,6 +82,7 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
     runtime = runtime or LocalRuntime(settings)
     browser = Browser(settings)
     voice = Voice(runtime,settings)
+    wake = WakeService(settings)
     actions=DesktopActions(settings,runtime)
     tools = ToolRegistry(settings,store,browser,actions)
     conversations = Conversations(settings,store,runtime,tools,voice)
@@ -86,6 +92,7 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
     ui_sessions={}
 
     def update_blocker():
+        if wake.active_until > time.monotonic():return 'Aguardando a conversa por voz começar'
         if any(not r.finished for r in conversations.runs.values()):return 'Aguardando o pedido atual terminar'
         if conversations.approvals:return 'Aguardando sua decisão sobre uma ação'
         if index_state['running']:return 'Aguardando a atualização dos documentos'
@@ -136,6 +143,7 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
         await asyncio.gather(*tasks,*background,return_exceptions=True)
         await browser.close()
         voice.close()
+        wake.close()
         actions.close()
         await runtime.close()
         if settings.get('update_install_on_exit',True) and updates.state['phase']=='ready':
@@ -148,6 +156,7 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
     app.state.token,app.state.settings,app.state.runtime = token,settings,runtime
     app.state.store,app.state.conversations,app.state.tools = store,conversations,tools
     app.state.updates=updates
+    app.state.wake=wake
     updates.shutdown=lambda:getattr(app.state,'shutdown',lambda:None)()
     from .alexa import install_alexa
     install_alexa(app,settings,store,conversations)
@@ -178,7 +187,7 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
     @app.get("/api/status")
     async def status():
         import psutil
-        return {"version":__version__,"engine":runtime.info(),"voice":voice.info(),"settings":settings.all(),
+        return {"version":__version__,"engine":runtime.info(),"voice":voice.info(),"wake":wake.info(),"settings":settings.all(),
                 "stats":{"conversations":store.query("SELECT count(*) n FROM conversations")[0]["n"],
                          "memories":store.query("SELECT count(*) n FROM memories")[0]["n"],
                          "documents":store.query("SELECT count(*) n FROM documents")[0]["n"]},
@@ -250,6 +259,8 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
                         pass
         previous=settings.all()
         updated=settings.update(data)
+        if any(key in data and data[key]!=previous.get(key) for key in ('wake_enabled','wake_sensitivity')):
+            await asyncio.to_thread(wake.close)
         if any(key in data and data[key]!=previous.get(key) for key in ('model_profile','backend','cpu_threads')):
             await conversations.stop()
             await runtime.stop_process()
@@ -288,6 +299,8 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
 
     @app.post("/api/stop")
     async def stop():
+        settings.update({'wake_enabled':False})
+        await asyncio.to_thread(wake.close)
         await conversations.stop()
         voice.close()
         await runtime.stop_process()
@@ -446,6 +459,34 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
                   "messages":store.query("SELECT * FROM messages ORDER BY created"),"memories":store.memories(),"settings":settings.all()}
         return Response(json.dumps(result,ensure_ascii=False,indent=2),media_type="application/json",
                         headers={"Content-Disposition":"attachment; filename=pacoca-backup.json"})
+
+    @app.websocket('/wake')
+    async def wake_audio(ws: WebSocket):
+        host = ws.headers.get('host','')
+        if host.split(':')[0] not in ('127.0.0.1','localhost','testserver') or not allowed_origin(ws.headers.get('origin'),host) or not secrets.compare_digest(ws.query_params.get('token',''),token):
+            await ws.close(code=1008); return
+        await ws.accept()
+        owner=secrets.token_hex(16)
+        try:
+            await ws.send_json(await asyncio.to_thread(wake.open,owner))
+            while True:
+                # Silence still sends PCM; missing frames mean the client went away.
+                message=await asyncio.wait_for(ws.receive(),10)
+                if message['type']=='websocket.disconnect':break
+                if 'bytes' in message and message['bytes'] is not None:
+                    data=message['bytes']
+                elif message.get('text')=='reset':data='reset'
+                elif message.get('text')=='ping':
+                    await ws.send_json({'type':'pong'});continue
+                else:raise ValueError('Mensagem de escuta inválida.')
+                await ws.send_json(await asyncio.to_thread(wake.feed,owner,data))
+        except (WebSocketDisconnect, RuntimeError, ValueError, TimeoutError, EOFError, OSError) as exc:
+            try:await ws.send_json({'type':'error','message':str(exc)[:160]})
+            except (RuntimeError, OSError):pass
+        finally:
+            await asyncio.to_thread(wake.close,owner)
+            try:await ws.close()
+            except RuntimeError:pass
 
     @app.websocket("/events")
     async def events(ws: WebSocket):

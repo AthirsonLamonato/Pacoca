@@ -89,6 +89,9 @@ def main():
 
 
 def run_window(url,server,thread,settings,minimized=False,activation=None,ready_file=None,health_file=None):
+    # The keyword microphone must continue running with the window minimized.
+    flags=os.environ.get('QTWEBENGINE_CHROMIUM_FLAGS','')
+    os.environ['QTWEBENGINE_CHROMIUM_FLAGS']=flags+' --disable-background-timer-throttling --disable-renderer-backgrounding'
     from PySide6.QtCore import QObject, QUrl, Slot, Qt, QTimer, qVersion
     from PySide6.QtGui import QIcon, QAction, QDesktopServices
     from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QSystemTrayIcon, QMenu
@@ -196,6 +199,8 @@ def run_window(url,server,thread,settings,minimized=False,activation=None,ready_
     menu=QMenu()
     show=menu.addAction("Abrir Paçoca")
     show.triggered.connect(lambda:(window.showNormal(),window.activateWindow()))
+    pause=menu.addAction('Pausar microfone')
+    pause.triggered.connect(lambda:page.runJavaScript('safely(pauseMicrophone)()'))
     menu.addSeparator()
     quit_action=menu.addAction("Encerrar Paçoca")
     quit_action.triggered.connect(window.close)

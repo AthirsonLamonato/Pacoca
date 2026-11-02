@@ -14,7 +14,7 @@ O aplicativo não exige Python, Ollama, LM Studio, conta de IA ou chave de API. 
 
 ## Conversar por voz
 
-O microfone fica aberto somente durante a sessão iniciada por você. A barra **Estou ouvindo você** indica a captura. Faça uma pequena pausa ao terminar cada fala; a Paçoca transcreve e responde. Você pode começar outra fala para interromper o áudio anterior. **Encerrar conversa por voz** fecha o microfone.
+Sem a chamada pelo nome ativada, o microfone abre durante a sessão iniciada por você. Com a chamada ativada, ele também permanece aberto enquanto espera “Paçoca”. A barra **Estou ouvindo você** indica a sessão de conversa. Faça uma pequena pausa ao terminar cada fala; a Paçoca transcreve e responde. Você pode começar outra fala para interromper o áudio anterior. **Encerrar conversa por voz** fecha o microfone no modo manual. Com a chamada ativada, use **Voltar à espera** para aguardar o nome ou **Pausar microfone** para fechar a captura. Você também pode dizer “Pare de ouvir”.
 
 O botão **■** no canto superior interrompe fala e tarefas. Durante uma geração, **Parar** interrompe o turno atual. Uma operação do Windows já iniciada pode terminar; o cancelamento impede as etapas seguintes e descarta áudio e respostas atrasadas. Não existe desfazer universal para ações externas.
 
@@ -109,3 +109,13 @@ $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
 ```
 
 Os testes antigos continuam na pasta `tests/` como referência. Não são o critério de validação da aplicação recriada.
+
+## Chamar pelo nome no PC (1.2.0)
+
+Ative **Ouvir quando eu disser “Paçoca”** em Configurações, ou **Ativar “Paçoca”** acima da caixa de mensagem. Escolha o microfone correto. Diga “Paçoca, que horas são?” em uma única frase ou chame “Paçoca”, aguarde o sinal curto e faça seu pedido. Durante a sessão, fale normalmente, sem repetir o nome. O prazo para voltar à espera é configurável entre 10 e 60 segundos; tarefas, respostas, reprodução e decisões pendentes mantêm a sessão ativa.
+
+O indicador **Diga “Paçoca” · escuta local** significa que o microfone está aberto. O aplicativo precisa continuar aberto; pode ficar minimizado. Fechar a janela encerra o aplicativo e a escuta. **Voltar à espera** mantém a escuta da palavra-chave; **Pausar microfone** fecha a captura e mantém essa preferência no próximo início. Há também **Pausar microfone** no ícone da bandeja. O botão de emergência fecha o microfone e interrompe as tarefas.
+
+A espera usa apenas um detector pequeno de palavras, com prioridade reduzida e limite de CPU de 5% no Windows. Whisper e a IA de conversa continuam sob demanda e podem ser liberados por inatividade. O nome detectado é confirmado pela transcrição antes do primeiro pedido. O áudio de espera mantém no máximo quatro segundos em memória e segue apenas para o servidor do próprio aplicativo em 127.0.0.1; não é salvo nem enviado à nuvem.
+
+Ajuste a sensibilidade se houver chamadas perdidas ou ativações por engano. O detector usa fonemas de um modelo acústico em inglês com pronúncias próprias de “Paçoca”; reconhecimento perfeito de vozes e sotaques brasileiros não foi comprovado. Os testes automatizados usam fala sintética. Não altera a palavra de ativação dos dispositivos Echo.

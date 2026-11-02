@@ -1,13 +1,20 @@
 # Build with: .venv/Scripts/python -m PyInstaller packaging/pacoca.spec --noconfirm
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_all,collect_data_files,collect_submodules
+from pocketsphinx import get_model_path
 
 root=Path(SPECPATH).parent
 datas=[(str(root/'src/pacoca/ui'),'pacoca/ui'),
        (str(root/'src/pacoca/update_helper.ps1'),'pacoca'),
-       (str(root/'src/pacoca/runtime-id.txt'),'pacoca')]
+       (str(root/'src/pacoca/runtime-id.txt'),'pacoca'),
+       (str(root/'src/pacoca/wake.dic'),'pacoca'),
+       # Decoder probes this namespace while constructing its default config,
+       # even when all actual acoustic/dictionary paths are explicit.
+       (str(Path(get_model_path())/'en-us/en-us/README'),'pocketsphinx/model'),
+       (str(Path(get_model_path())/'en-us/en-us'),'wakeword/en-us')]
 binaries=[]
 hiddenimports=[]
+hiddenimports+=['pocketsphinx._pocketsphinx']
 for package in ('piper','faster_whisper','ctranslate2','onnxruntime'):
     data,bins,hidden=collect_all(package)
     datas+=data;binaries+=bins;hiddenimports+=hidden

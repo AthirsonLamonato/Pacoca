@@ -8,19 +8,20 @@ Uma nova aplicação desktop para Windows: conversa natural por texto e voz, mem
 
 ## Instalar
 
-[**Baixar a Paçoca para Windows**](https://github.com/AthirsonLamonato/Pacoca/releases/latest/download/Pacoca-Setup.exe) · [Versão 1.1.1](https://github.com/AthirsonLamonato/Pacoca/releases/tag/v1.1.1)
+[**Baixar a Paçoca para Windows**](https://github.com/AthirsonLamonato/Pacoca/releases/latest/download/Pacoca-Setup.exe) · [Versão 1.2.0](https://github.com/AthirsonLamonato/Pacoca/releases/tag/v1.2.0)
 
-**Versão 1.1.1:** modo leve como padrão, modelos carregados sob demanda, atualizações automáticas autenticadas e comandos de aplicativos, jogos e Spotify.
+**Versão 1.2.0:** ativação local por “Paçoca”, retorno automático à espera e botão para pausar o microfone. Mantém o modo leve, as atualizações autenticadas e os comandos de aplicativos, jogos e Spotify.
 
 Execute **`release/Pacoca-Setup.exe`**. O instalador inclui interface, motor de IA, transcrição, voz e navegador de automação. Ele baixa o modelo leve Qwen3 1.7B Q4_K_M de aproximadamente 1,1 GB, em revisão e SHA-256 fixados. Não exige Python, Ollama nem outro aplicativo de IA. O modelo 8B é opcional na instalação; cópias válidas já instaladas são preservadas.
 
 Reserve aproximadamente 12 GB livres (20 GB com 8B). A primeira instalação precisa de internet. Depois, conversa, voz e memória são locais. Spotify, jogos online, navegação, Alexa e atualizações usam seus serviços de rede.
 
-A Paçoca inicia sem carregar modelos. O modo diário usa CPU com dois threads e prioridade reduzida, libera os motores após inatividade e deixa a GPU disponível para os jogos. O modo avançado é uma escolha manual e é suspenso durante jogos conhecidos. Em Configurações, escolha o microfone e clique em **Vamos conversar**.
+A Paçoca inicia sem carregar modelos. O modo diário usa CPU com dois threads e prioridade reduzida, libera os motores após inatividade e deixa a GPU disponível para os jogos. O modo avançado é uma escolha manual e é suspenso durante jogos conhecidos. Em Configurações, escolha o microfone e ative **Ouvir quando eu disser “Paçoca”**. Com o aplicativo aberto, mesmo minimizado, diga “Paçoca, que horas são?”. Depois da ativação, continue conversando sem repetir o nome. Após 20 segundos de silêncio, ela volta a esperar a chamada. **Pausar microfone**, inclusive no ícone da bandeja, fecha a captura. A opção fica desligada inicialmente.
 
 ## Recursos
 
 - Conversa com contexto, resposta progressiva e voz em português brasileiro.
+- Ativação por “Paçoca” com detector pequeno em processo separado, buffer de quatro segundos somente em memória e confirmação do nome por transcrição antes de executar o primeiro pedido.
 - Sessão de microfone com detecção de fala, cancelamento de eco do navegador e interrupção da resposta.
 - Qwen3 1.7B Q4_K_M (quantização Unsloth) no modo leve; Qwen3 8B opcional, com CUDA/Vulkan/CPU.
 - Atualizações automáticas com assinatura do publicador, backup do banco e restauração dos arquivos anteriores se a nova janela falhar.
@@ -71,6 +72,6 @@ Os arquivos legados na raiz, em `core/`, `modules/`, `input/`, `output/`, `stora
 
 Dados pessoais ficam em `%LOCALAPPDATA%\Pacoca`. Pastas de conhecimento precisam ser adicionadas pelo usuário. Ações importantes mostram o conteúdo antes de pedir autorização. A automação opera na sessão atual do Windows e não contorna UAC nem a tela bloqueada.
 
-A qualidade das respostas depende do modelo e do hardware. A ativação por palavra-chave e a restauração automática de exportações não estão habilitadas nesta versão. Alexa requer sua própria skill, conta e endpoint HTTPS; a integração real no Echo precisa ser configurada e testada com esses recursos.
+A qualidade das respostas depende do modelo e do hardware. O detector da palavra-chave usa PocketSphinx com pronúncias específicas para o nome, não um reconhecedor geral de português. A sensibilidade pode precisar de ajuste para sua voz e ambiente; TV e pessoas dizendo o nome também podem ativá-la. A restauração automática de exportações não está habilitada nesta versão. Alexa requer sua própria skill, conta e endpoint HTTPS; a integração real no Echo precisa ser configurada e testada com esses recursos.
 
 O código da aplicação recriada é distribuído sob GPL-3.0-or-later. Licenças e avisos dos componentes acompanham a instalação; consulte `packaging/DISTRIBUTION.txt`.

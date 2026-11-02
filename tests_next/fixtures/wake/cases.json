@@ -1,0 +1,62 @@
+[
+  {
+    "file": "00.wav",
+    "text": "Paçoca.",
+    "wake": true
+  },
+  {
+    "file": "01.wav",
+    "text": "Paçoca, abre o Spotify.",
+    "wake": true
+  },
+  {
+    "file": "02.wav",
+    "text": "Ei Paçoca, que horas são?",
+    "wake": true
+  },
+  {
+    "file": "04.wav",
+    "text": "Oi, Paçoca.",
+    "wake": true
+  },
+  {
+    "file": "05.wav",
+    "text": "Eu quero pipoca.",
+    "wake": false
+  },
+  {
+    "file": "06.wav",
+    "text": "Essa pessoa passou por aqui.",
+    "wake": false
+  },
+  {
+    "file": "07.wav",
+    "text": "Pode abrir o Spotify.",
+    "wake": false
+  },
+  {
+    "file": "08.wav",
+    "text": "Bom dia, como você está?",
+    "wake": false
+  },
+  {
+    "file": "10.wav",
+    "text": "Vou pausar a música.",
+    "wake": false
+  },
+  {
+    "file": "12.wav",
+    "text": "Pipoca, abre o Spotify.",
+    "wake": false
+  },
+  {
+    "file": "13.wav",
+    "text": "A pessoa abriu a porta.",
+    "wake": false
+  },
+  {
+    "file": "14.wav",
+    "text": "Parece que passou.",
+    "wake": false
+  }
+]

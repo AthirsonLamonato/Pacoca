@@ -19,6 +19,17 @@ const state = {
   connected: false,
   speech: false,
   voice: false,
+  generating: false,
+  automaticVoice: false,
+  firstWakeUtterance: false,
+  pendingWakeChunks: null,
+  wakeCommandFrames: 0,
+  voiceEpoch: 0,
+  lastVoiceActivity: 0,
+  captureStarting: null,
+  captureEpoch: 0,
+  wake: { ws: null, ready: false, ring: [], packet: [], samples: 0, ack: 0,
+    connecting: false, failed: false, paused: false, retryAt: 0, mutedUntil: 0 },
   audioQueue: [],
   player: null,
   playUrl: null,
@@ -229,6 +240,7 @@ async function refreshStatus() {
     document.body.dataset.theme = state.settings.theme;
     if (!state.settings.onboarding_done && !$("#onboarding").open)
       $("#onboarding").showModal();
+    reconcileWake();
   } catch (e) {
     console.warn(e.message);
   }
@@ -404,6 +416,8 @@ async function send(text) {
   const cid = state.cid;
   state.activeRun = null;
   const user = addMessage("user", text, "pending-" + Date.now());
+  state.generating = true;
+  state.lastVoiceActivity = Date.now();
   let response;
   try {
     response = await json("/chat", {
@@ -415,6 +429,7 @@ async function send(text) {
       },
     });
   } catch (error) {
+    state.generating = false;
     user.element.remove();
     throw error;
   }
@@ -438,6 +453,8 @@ function stopPlayback() {
   }
 }
 async function interrupt() {
+  state.generating = false;
+  state.lastVoiceActivity = Date.now();
   const oldRun = state.activeRun;
   if (oldRun) state.ignored.add(oldRun);
   stopPlayback();
@@ -468,6 +485,7 @@ async function playNext() {
     } catch {}
   $("#voice-state").textContent = "Pode me interromper quando quiser";
   player.onended = () => {
+    state.lastVoiceActivity = Date.now();
     if (state.ws?.readyState === 1)
       state.ws.send(
         JSON.stringify({
@@ -524,6 +542,7 @@ function event(e) {
   if (e.conversation_id !== state.cid) return;
   if (state.ignored.has(e.run_id)) return;
   if (e.type === "interrupted") {
+    state.generating = false;
     state.ignored.add(e.run_id);
     stopPlayback();
     $("#activity").hidden = true;
@@ -541,6 +560,7 @@ function event(e) {
   }
   if (e.type === "state") {
     if (e.state !== "idle") {
+      state.generating = true;
       state.activeRun = e.run_id;
       $("#activity").hidden = false;
       $("#activity-label").textContent = e.label;
@@ -578,6 +598,8 @@ function event(e) {
     scrollBottom();
   }
   if (e.type === "done") {
+    state.generating = false;
+    state.lastVoiceActivity = Date.now();
     let m = state.messages.get(e.run_id);
     if (!m) m = addMessage("assistant", e.text, e.run_id);
     else {
@@ -590,6 +612,8 @@ function event(e) {
     refreshStatus();
   }
   if (e.type === "error") {
+    state.generating = false;
+    state.lastVoiceActivity = Date.now();
     $("#activity").hidden = true;
     addMessage("assistant", e.message, "error-" + e.run_id);
     toast(e.message, true);
@@ -1037,6 +1061,9 @@ async function loadSettings() {
   }
   $("#setting-retention").value = String(s.retention_days);
   $("#setting-speed").value = s.voice_speed;
+  $('#setting-wake').checked = Boolean(s.wake_enabled);
+  $('#setting-wake-sensitivity').value = s.wake_sensitivity || 'normal';
+  $('#setting-wake-timeout').value = String(s.wake_timeout || 20);
   $("#speed-output").textContent = s.voice_speed + "×";
   $("#setting-startup").checked = s.start_with_windows;
   $("#setting-alexa").checked = s.alexa_enabled;
@@ -1091,6 +1118,9 @@ async function saveSettings() {
     spotify_device:$('#setting-spotify-device').value.trim(),
     retention_days: Number($("#setting-retention").value),
     voice_speed: Number($("#setting-speed").value),
+    wake_enabled: $('#setting-wake').checked,
+    wake_sensitivity: $('#setting-wake-sensitivity').value,
+    wake_timeout: Number($('#setting-wake-timeout').value),
     microphone_id: $("#setting-mic").value,
     output_id: $("#setting-output").value,
     alexa_enabled: $("#setting-alexa").checked,
@@ -1099,85 +1129,225 @@ async function saveSettings() {
   };
   if ($("#setting-startup").checked !== state.settings.start_with_windows)
     body.start_with_windows = $("#setting-startup").checked;
+  const restartCapture = body.microphone_id !== state.settings.microphone_id;
+  const restartWake = body.wake_sensitivity !== state.settings.wake_sensitivity;
   state.settings = await json("/settings", { method: "PATCH", body });
+  state.wake.paused = !body.wake_enabled;
+  state.wake.failed = false;
+  if (restartCapture) closeCapture();
+  if (restartCapture || restartWake) closeWake();
+  if (restartCapture && state.voice) {
+    try { await ensureCapture(); }
+    catch (e) { endVoice(true); throw e; }
+  }
+  await reconcileWake();
   document.body.dataset.theme = state.settings.theme;
   toast("Preferências salvas.");
   refreshStatus();
 }
 
-async function startVoice() {
-  if (state.voice) {
-    endVoice();
-    return;
-  }
-  if (!navigator.mediaDevices?.getUserMedia)
-    throw Error(
-      "A captura de áudio não está disponível. Abra a janela da Paçoca.",
-    );
-  const audio = {
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true,
-  };
-  if (state.settings.microphone_id)
-    audio.deviceId = { exact: state.settings.microphone_id };
-  try {
-    state.stream = await navigator.mediaDevices.getUserMedia({ audio });
-  } catch {
-    throw Error(
-      "Não consegui acessar o microfone. Confira a permissão e o dispositivo escolhido.",
-    );
-  }
-  try {
+// One microphone stream supplies either keyword spotting or the active conversation.
+async function ensureCapture() {
+  if (state.stream) return;
+  if (state.captureStarting) return state.captureStarting;
+  const epoch = state.captureEpoch;
+  state.captureStarting = (async () => {
+    if (!navigator.mediaDevices?.getUserMedia) throw Error("Abra a janela da Paçoca para usar o microfone.");
+    const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+    if (state.settings.microphone_id) audio.deviceId = { exact: state.settings.microphone_id };
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio }); }
+    catch { throw Error("Não consegui acessar o microfone. Confira a permissão e o dispositivo escolhido."); }
+    if (epoch !== state.captureEpoch) { stream.getTracks().forEach(t => t.stop()); return; }
+    state.stream = stream;
     state.context = new AudioContext();
     await state.context.resume();
     await state.context.audioWorklet.addModule("/static/recorder.js");
-    const source = state.context.createMediaStreamSource(state.stream);
+    if (epoch !== state.captureEpoch || !state.context) return;
+    const source = state.context.createMediaStreamSource(stream);
     state.node = new AudioWorkletNode(state.context, "pacoca-capture");
-    state.node.port.onmessage = (e) => audioChunk(e.data);
+    state.node.port.onmessage = e => audioChunk(e.data);
     source.connect(state.node);
-    const silent = state.context.createGain();
-    silent.gain.value = 0;
-    state.node.connect(silent);
-    silent.connect(state.context.destination);
-    state.voice = true;
-    state.chunks = [];
-    state.preRoll = [];
-    state.recording = false;
-    state.voiced = 0;
-    state.silent = 0;
-    $("#voice-session").hidden = false;
-    document.body.classList.add("voice-active");
-    $("#voice-state").textContent = "Estou ouvindo você";
-    $("#mic-button").setAttribute("aria-label", "Encerrar conversa por voz");
-    page("chat");
+    const silent = state.context.createGain(); silent.gain.value = 0;
+    state.node.connect(silent); silent.connect(state.context.destination);
+    stream.getTracks().forEach(track => track.onended = () => {
+      closeCapture(); closeWake(); endVoice(true);
+      state.wake.retryAt = Date.now() + 3000;
+      $('#wake-label').textContent = 'Microfone desconectado. Reconectando…';
+    });
     enumerateDevices();
+  })();
+  try { await state.captureStarting; }
+  catch (e) { closeCapture(); throw e; }
+  finally { state.captureStarting = null; }
+}
+function closeCapture() {
+  state.captureEpoch++;
+  state.stream?.getTracks().forEach(t => { t.onended = null; t.stop(); });
+  state.stream = null;
+  state.node?.disconnect(); state.node = null;
+  state.context?.close(); state.context = null;
+}
+function beginVoice(automatic = false) {
+  state.voiceEpoch++;
+  state.voice = true; state.automaticVoice = automatic;
+  state.pendingWakeChunks = null; state.wakeCommandFrames = 0;
+  state.lastVoiceActivity = Date.now();
+  state.chunks = []; state.preRoll = []; state.recording = false;
+  state.voiced = 0; state.silent = 0;
+  $('#voice-session').hidden = false;
+  $('#voice-state').textContent = 'Estou ouvindo você';
+  $('#end-voice').textContent = state.settings.wake_enabled ? 'Voltar à espera' : 'Encerrar conversa por voz';
+  $('#mic-button').setAttribute('aria-label', 'Encerrar conversa por voz');
+  document.body.classList.add('voice-active');
+  page('chat'); reportActivity(); renderWake();
+}
+async function startVoice() {
+  if (state.voice) { endVoice(); return; }
+  await ensureCapture();
+  if (state.stream) beginVoice();
+}
+function endVoice(force = false) {
+  state.voiceEpoch++; state.voice = false; state.automaticVoice = false;
+  state.firstWakeUtterance = false; state.recording = false;
+  state.pendingWakeChunks = null; state.wakeCommandFrames = 0;
+  state.chunks = []; state.preRoll = []; state.voiced = state.silent = 0;
+  $('#voice-session').hidden = true;
+  document.body.classList.remove('voice-active');
+  $('#mic-button').setAttribute('aria-label', 'Iniciar conversa por voz');
+  stopPlayback();
+  if (force || !state.settings.wake_enabled) { closeCapture(); closeWake(); }
+  else resetWake();
+  reportActivity(); renderWake();
+}
+function renderWake(message) {
+  const w = state.wake;
+  $('#wake-label').textContent = message || (state.voice ? 'Conversa por voz ativa' :
+    state.settings.wake_enabled && !w.paused ? (w.failed ? 'Escuta indisponível. Confira o microfone.' :
+    w.ready ? 'Diga “Paçoca” · escuta local' : 'Preparando a escuta local…') : 'Microfone pausado');
+  $('#wake-toggle').textContent = state.settings.wake_enabled || state.voice ? 'Pausar microfone' : 'Ativar “Paçoca”';
+  $('#wake-status').classList.toggle('listening', Boolean(state.stream));
+}
+function closeWake() {
+  const w = state.wake, ws = w.ws;
+  w.ws = null; w.ready = false; w.connecting = false;
+  w.ring = []; w.packet = []; w.samples = w.ack = 0;
+  if (ws) { ws.onclose = null; ws.close(); }
+}
+function resetWake() {
+  const w = state.wake;
+  w.ready = false; w.ring = []; w.packet = []; w.samples = w.ack = 0;
+  w.mutedUntil = Date.now() + 500;
+  if (w.ws?.readyState === WebSocket.OPEN) w.ws.send('reset');
+}
+async function reconcileWake() {
+  const w = state.wake;
+  if (!state.settings.wake_enabled || w.paused || !state.settings.onboarding_done) {
+    closeWake();
+    if (!state.voice && !state.captureStarting) closeCapture();
+    renderWake(); return;
+  }
+  if (w.ws || w.connecting || w.failed || Date.now() < w.retryAt) return;
+  w.connecting = true;
+  try {
+    await ensureCapture();
+    if (!state.stream || !state.settings.wake_enabled || w.paused) return;
+    const ws = new WebSocket(`ws://${location.host}/wake?token=${encodeURIComponent(token)}`);
+    w.ws = ws;
+    ws.onmessage = e => {
+      if (w.ws !== ws) return;
+      const result = JSON.parse(e.data);
+      if (result.type === 'ready' || result.type === 'reset') {
+        w.ready = true; w.samples = w.ack = 0; w.ring = []; w.packet = [];
+        renderWake();
+      } else if (result.type === 'error') {
+        w.failed = true; closeWake();
+        if (!state.voice) closeCapture();
+        renderWake(result.message);
+      } else if (result.type === 'ack' || result.type === 'wake') {
+        w.ack = result.samples;
+        if (result.type === 'wake' && w.ready && !state.voice && state.stream && state.settings.wake_enabled) {
+          const chunks = w.ring.filter(item => item.end > result.start - 4000).map(item => item.chunk);
+          const afterName = w.ring.filter(item => item.end > result.end + 1600);
+          beginVoice(true); state.firstWakeUtterance = true;
+          state.keywordTailSamples = Math.max(0, result.end + 1600 - w.samples);
+          state.wakeCommandFrames = afterName.filter(item => Math.sqrt(item.chunk.reduce((n,v) => n+v*v,0)/item.chunk.length) > 0.01).length;
+          state.recording = true; state.chunks = chunks;
+          // Quiet acknowledgement uses the existing local audio context, no voice model.
+          const oscillator = state.context.createOscillator(), gain = state.context.createGain();
+          oscillator.frequency.value = 660; gain.gain.value = 0.035;
+          oscillator.connect(gain); gain.connect(state.context.destination);
+          oscillator.start(); oscillator.stop(state.context.currentTime + 0.065);
+          oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+          w.ring = []; w.packet = [];
+        }
+      }
+    };
+    ws.onclose = () => {
+      if (w.ws !== ws) return;
+      closeWake(); w.retryAt = Date.now() + 3000;
+      if (!state.voice) closeCapture();
+      renderWake('Escuta desconectada. Reconectando…');
+    };
+    ws.onerror = () => {};
   } catch (e) {
-    endVoice();
-    throw e;
+    w.failed = true; closeWake(); if (!state.voice) closeCapture();
+    renderWake(e.message); toast(e.message, true);
+  } finally { w.connecting = false; }
+}
+function wakeChunk(chunk) {
+  const w = state.wake;
+  if (!w.ready || w.ws?.readyState !== WebSocket.OPEN || !state.settings.wake_enabled) return;
+  if (state.player || state.audioQueue.length || state.previewPlaying) { w.needsReset = true; return; }
+  if (w.needsReset) { w.needsReset = false; resetWake(); return; }
+  if (Date.now() < w.mutedUntil) return;
+  // Reject backlog instead of waking on stale audio after a slow or suspended PC.
+  if (w.ws.bufferedAmount > 32000 || w.samples - w.ack > 32000) { resetWake(); return; }
+  w.samples += chunk.length;
+  w.ring.push({ end: w.samples, chunk });
+  while (w.ring.length > 125) w.ring.shift(); // Four seconds, memory only.
+  w.packet.push(chunk);
+  if (w.packet.length >= 5) {
+    const pcm = new Int16Array(2560); let at = 0;
+    for (const c of w.packet) for (const sample of c) pcm[at++] = Math.max(-32768, Math.min(32767, Math.round(sample * 32768)));
+    w.packet = []; w.ws.send(pcm.buffer);
   }
 }
-function endVoice() {
-  state.voice = false;
-  state.stream?.getTracks().forEach((t) => t.stop());
-  state.stream = null;
-  state.node?.disconnect();
-  state.node = null;
-  state.context?.close();
-  state.context = null;
-  state.recording = false;
-  state.chunks = [];
-  state.preRoll = [];
-  $("#voice-session").hidden = true;
-  document.body.classList.remove("voice-active");
-  $("#mic-button").setAttribute("aria-label", "Iniciar conversa por voz");
-  stopPlayback();
+async function pauseMicrophone() {
+  state.wake.paused = true;
+  state.settings.wake_enabled = false;
+  state.wake.failed = false;
+  endVoice(true);
+  // Persist pause so status polling and the next launch cannot silently reopen the mic.
+  state.settings = await json('/settings', { method: 'PATCH', body: { wake_enabled: false } });
+  renderWake();
+}
+async function toggleWake() {
+  if (state.settings.wake_enabled || state.voice) { await pauseMicrophone(); return; }
+  state.wake.failed = false; state.wake.paused = false; state.wake.retryAt = 0;
+  state.settings = await json('/settings', { method: 'PATCH', body: { wake_enabled: true } });
+  await reconcileWake();
+}
+function voiceTick() {
+  const w = state.wake;
+  if (w.ws?.readyState === WebSocket.OPEN && (state.voice || !w.ready)) w.ws.send('ping');
+  const busy = state.recording || state.processing || state.generating || state.player || state.audioQueue.length ||
+    state.approvals.length || $('#prompt').value.trim() || $('#modal').open;
+  if (busy) state.lastVoiceActivity = Date.now();
+  if (state.voice && state.automaticVoice && !busy &&
+      Date.now() - state.lastVoiceActivity > (state.settings.wake_timeout || 20) * 1000) endVoice();
 }
 function audioChunk(chunk) {
-  if (!state.voice || state.processing) return;
+  if (!state.voice) { wakeChunk(chunk); return; }
+  if (state.processing) return;
   const energy = Math.sqrt(chunk.reduce((n, v) => n + v * v, 0) / chunk.length);
   const threshold = state.player ? 0.018 : 0.01;
   const voiced = energy > threshold;
+  if (state.firstWakeUtterance && state.recording) {
+    if (state.keywordTailSamples > 0) state.keywordTailSamples -= chunk.length;
+    else if (voiced) state.wakeCommandFrames++;
+  }
+  if (voiced) state.lastVoiceActivity = Date.now();
   if (!state.recording) {
     state.preRoll.push(chunk);
     if (state.preRoll.length > 9) state.preRoll.shift();
@@ -1185,6 +1355,11 @@ function audioChunk(chunk) {
     if (state.voiced >= 4) {
       state.recording = true;
       state.chunks = [...state.preRoll];
+      if (state.pendingWakeChunks) {
+        state.chunks = [...state.pendingWakeChunks, ...state.chunks];
+        state.pendingWakeChunks = null;
+        state.wakeCommandFrames = 999;
+      }
       state.preRoll = [];
       state.silent = 0;
       interrupt();
@@ -1199,11 +1374,19 @@ function audioChunk(chunk) {
       state.recording = false;
       state.voiced = 0;
       state.silent = 0;
-      transcribe(chunks);
+      if (state.firstWakeUtterance && state.wakeCommandFrames < 6) {
+        // A call by itself waits for the command. Do not start Whisper and lose
+        // the next sentence while it loads. Confirm name + command together.
+        state.pendingWakeChunks = chunks;
+        $('#voice-state').textContent = 'Pode falar seu pedido';
+      } else transcribe(chunks);
     }
   }
 }
 async function transcribe(chunks) {
+  const epoch = state.voiceEpoch;
+  const confirmWake = state.firstWakeUtterance;
+  state.firstWakeUtterance = false;
   state.processing = true;
   $("#voice-state").textContent = "Entendendo o que você disse";
   try {
@@ -1219,15 +1402,29 @@ async function transcribe(chunks) {
       body: samples.buffer,
       headers: { "Content-Type": "application/octet-stream" },
     });
-    if (result.text && state.voice) {
+    if (epoch !== state.voiceEpoch) return;
+    let text = result.text || '';
+    if (confirmWake) {
+      // Transcription confirms the actual name before any command is executed.
+      const called = /^(?:(?:oi|ei|e|hey|olá)[,!.?\s]+)?pa[çcs]oca\b[,!.?:\s-]*/i;
+      if (!called.test(text)) { endVoice(); return; }
+      text = text.replace(called, '').trim();
+    }
+    if (text && state.voice) {
+      if (/^(?:por favor[, ]+)?(?:parar de ouvir|pare de ouvir|pausar (?:o )?microfone|pause (?:o )?microfone)\b/i.test(text)) {
+        await pauseMicrophone();
+        toast('Microfone pausado.');
+        return;
+      }
       $("#voice-state").textContent = "Já entendi. Um instante…";
-      await send(result.text);
+      await send(text);
     } else $("#voice-state").textContent = "Estou ouvindo você";
   } catch (e) {
     toast(e.message, true);
     $("#voice-state").textContent = "Estou ouvindo você";
   } finally {
     state.processing = false;
+    state.lastVoiceActivity = Date.now();
   }
 }
 
@@ -1257,7 +1454,8 @@ $$("[data-prompt]").forEach(
 );
 $("#start-voice").onclick = safely(startVoice);
 $("#mic-button").onclick = safely(startVoice);
-$("#end-voice").onclick = endVoice;
+$("#end-voice").onclick = () => endVoice();
+$("#wake-toggle").onclick = safely(toggleWake);
 $("#toggle-speech").onclick = () => {
   state.speech = !state.speech;
   $("#toggle-speech").classList.toggle("active", state.speech);
@@ -1269,7 +1467,7 @@ $("#toggle-speech").onclick = () => {
 };
 $("#stop-response").onclick = interrupt;
 $("#emergency").onclick = safely(async () => {
-  endVoice();
+  try { await pauseMicrophone(); } catch (e) { toast(e.message, true); }
   await interrupt();
   await json("/stop", { method: "POST" });
   toast("Fala e tarefas interrompidas.");
@@ -1302,10 +1500,12 @@ $("#preview-voice").onclick = safely(async () => {
     const r = await api("/voice/preview", { method: "POST" });
     const url = URL.createObjectURL(await r.blob());
     const a = new Audio(url);
-    a.onended = () => URL.revokeObjectURL(url);
+    state.previewPlaying = true;
+    a.onended = a.onerror = () => { state.previewPlaying = false; URL.revokeObjectURL(url); };
     if ($("#setting-output").value && a.setSinkId)
       await a.setSinkId($("#setting-output").value);
-    await a.play();
+    try { await a.play(); }
+    catch (e) { state.previewPlaying = false; URL.revokeObjectURL(url); throw e; }
   } finally {
     b.disabled = false;
   }
@@ -1355,7 +1555,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 window.addEventListener("beforeunload", () => {
-  endVoice();
+  endVoice(true);
   stopPlayback();
 });
 async function init() {
@@ -1371,6 +1571,7 @@ async function init() {
     }
   setInterval(refreshStatus, 4000);
   setInterval(reportActivity,2000);
+  setInterval(voiceTick,1000);
 }
 safely(init)();
 
