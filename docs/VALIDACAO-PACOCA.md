@@ -121,3 +121,13 @@ A integração Spotify usa acessibilidade do aplicativo, OCR local do seletor Co
 O teste em localhost não comprova a disponibilidade do canal público. A assinatura e os artefatos ficam preparados para uma release no GitHub; sua publicação e a verificação dos downloads públicos são etapas separadas. A versão 1.0.1 precisa receber este instalador uma vez para passar a dispor do atualizador novo.
 
 Evidências locais (não publicadas): `.test-data/evidence/resources.json`, `tools-test.json`, `light-browser.json`, `baseline-native.json`, `build-native.json`, `update-transactions.json` e `real-update.json`.
+
+### Instalação e publicação concluídas
+
+O instalador final 1.1.1 passou pela instalação isolada com download real do modelo leve e hash correto, em aproximadamente 174 s. O aplicativo instalado passou por renderização Qt, conversa em CPU, áudio, OCR, mídia nativa, catálogo com 145 aplicativos e segunda instância, sem caminhos de desenvolvimento ou recursos externos à instalação.
+
+A instalação 1.0.1 do usuário foi atualizada depois de backup do aplicativo e do banco. Conversas, mensagens e memórias mantiveram suas contagens; os modelos anteriores não foram alterados. A 1.1.1 iniciou minimizada no modo leve, sem carregar linguagem ou áudio, com aproximadamente 358 MB no conjunto de processos. Não foram inseridas conversas de teste no perfil real.
+
+A release pública [v1.1.1](https://github.com/AthirsonLamonato/Pacoca/releases/tag/v1.1.1) foi publicada como Latest após aprovação do usuário. Os sete arquivos enviados tiveram tamanho e SHA-256 comparados com os digests do GitHub. O manifesto e os checksums foram baixados pelo endereço público; os pacotes responderam pelo canal público e a assinatura foi validada. A aplicação instalada consultou esse mesmo canal e retornou `current`, versão 1.1.1 e atualizações automáticas habilitadas. A CI Desktop e os testes legados em Windows/Linux passaram. A CI antiga recebeu dados de fuso horário e seus cenários de X11/Wayland passaram a simular Linux explicitamente; o código legado da aplicação foi preservado.
+
+Instalador: 1.834.552.758 bytes; SHA-256 `1bfb3976a38bc6e1267a2f0d299369cc21a125c10feef08264daeb4bdf5efaff`. Atualização normal da aplicação: aproximadamente 20 MB; runtime completo para mudanças de dependências: aproximadamente 429 MB. Modelos ficam fora desses pacotes.
