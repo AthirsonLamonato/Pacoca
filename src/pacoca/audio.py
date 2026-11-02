@@ -10,11 +10,24 @@ import threading
 import time
 import wave
 
+from .config import bundle_root
+from .native_voice import female_voices, synthesize_female
+
+
+def fast_model():
+    bundled = bundle_root() / 'speech/whisper-base'
+    if (bundled / 'model.bin').is_file():
+        return bundled
+    development = bundle_root() / 'assets/models/whisper-base'
+    return development if (development / 'model.bin').is_file() else None
+
 
 class _LocalVoice:
     def __init__(self, runtime, settings):
         self.runtime, self.settings = runtime, settings
         self.whisper = self.piper = None
+        self.whisper_path = None
+        self.native_used = False
         self.stt_lock, self.tts_lock = threading.Lock(), threading.Lock()
 
     def transcribe(self, audio):
@@ -23,13 +36,18 @@ class _LocalVoice:
         if audio.ndim != 1 or len(audio) < 1600 or len(audio) > 16000*45 or not np.isfinite(audio).all():
             raise ValueError("Áudio inválido. Grave uma fala de até 45 segundos.")
         with self.stt_lock:
-            if self.whisper is None:
+            path = fast_model() if self.settings.get('transcription_mode','fast') == 'fast' else None
+            path = path or self.runtime.resource('whisper')
+            if self.whisper is None or path != self.whisper_path:
+                self.whisper = None
                 from faster_whisper import WhisperModel
-                self.whisper = WhisperModel(str(self.runtime.resource("whisper")),device="cpu",compute_type="int8",
+                self.whisper = WhisperModel(str(path),device="cpu",compute_type="int8",
                                             cpu_threads=1,num_workers=1,local_files_only=True)
-            segments, _ = self.whisper.transcribe(audio,language="pt",beam_size=1,vad_filter=True,
+                self.whisper_path = path
+            segments, _ = self.whisper.transcribe(audio,language="pt",beam_size=3 if path == fast_model() else 1,
+                temperature=0,vad_filter=True,
                 condition_on_previous_text=False,no_speech_threshold=.65,
-                initial_prompt="Uma conversa em português brasileiro com a assistente Paçoca.")
+                initial_prompt="Conversa em português com a assistente Paçoca. Aplicativos: Spotify, Valorant, Counter-Strike, CS2.")
             text = " ".join(s.text.strip() for s in segments).strip()
             if text.casefold().strip(".! ") in ("obrigado por assistir","legendas pela comunidade amara.org"):
                 return ""
@@ -42,6 +60,13 @@ class _LocalVoice:
         if not cleaned:
             return b""
         with self.tts_lock:
+            speed = float(self.settings.get("voice_speed",1.0))
+            if self.settings.get('voice_style','male') == 'female':
+                self.piper = None
+                wav = synthesize_female(cleaned, speed)
+                self.native_used = True
+                return wav
+            self.native_used = False
             from piper import PiperVoice, SynthesisConfig
             if self.piper is None:
                 import onnxruntime as ort
@@ -55,14 +80,13 @@ class _LocalVoice:
                 self.piper=PiperVoice(config=PiperConfig.from_dict(config),session=ort.InferenceSession(
                     str(path),sess_options=options,providers=['CPUExecutionProvider']))
             output = io.BytesIO()
-            speed = float(self.settings.get("voice_speed",1.0))
             with wave.open(output,"wb") as wav:
                 self.piper.synthesize_wav(cleaned,wav,syn_config=SynthesisConfig(length_scale=1/max(.7,min(1.4,speed))))
             return output.getvalue()
 
     def info(self):
-        return {"engine":"Piper · Português BR", "transcription":"Whisper small · Português",
-                "local":True,"stt_loaded":self.whisper is not None,"tts_loaded":self.piper is not None}
+        return {"local":True,"stt_loaded":self.whisper is not None,
+                "tts_loaded":self.piper is not None or self.native_used}
 
     def warmup(self):
         """Load the local models before the first conversation; no capture or playback."""
@@ -97,10 +121,10 @@ def _voice_worker(connection,assets,manifest):
     local=_LocalVoice(_Assets(assets,manifest),values)
     try:
         while True:
-            method,payload,speed=connection.recv()
+            method,payload,options=connection.recv()
             if method=='close':return
             try:
-                values.values['voice_speed']=speed
+                values.values.update(options)
                 if method=='synthesize':result=local.synthesize(str(payload)[:5000])
                 elif method=='transcribe':result=local.transcribe(payload)
                 else:raise ValueError('Operação de áudio inválida')
@@ -122,8 +146,7 @@ class Voice:
         self.lifecycle=threading.RLock()
         self.last_used=0
         self.busy=False
-        self.state={'engine':'Piper · Português BR','transcription':'Whisper small · Português',
-                    'local':True,'stt_loaded':False,'tts_loaded':False}
+        self.state={'local':True,'stt_loaded':False,'tts_loaded':False}
 
     def _ensure_worker(self):
         with self.lifecycle:
@@ -139,13 +162,15 @@ class Voice:
             self.process.start();child.close()
             self.job=ProcessJob();self.job.cpu_limit(10);self.job.attach_pid(self.process.pid)
 
-    def _call(self,method,payload):
+    def _call(self,method,payload,options=None):
         with self.gate:
             self.busy=True
             try:
                 self._ensure_worker()
                 connection=self.connection
-                connection.send((method,payload,float(self.settings.get('voice_speed',1))))
+                values={key:self.settings.get(key,default) for key,default in
+                        [('voice_speed',1),('voice_style','male'),('transcription_mode','fast')]}
+                connection.send((method,payload,{**values,**(options or {})}))
                 if not connection.poll(90):
                     self.close()
                     raise TimeoutError('O áudio demorou demais e foi interrompido para liberar o computador.')
@@ -160,10 +185,16 @@ class Voice:
                 self.last_used=time.monotonic();self.busy=False
 
     def transcribe(self,audio):return self._call('transcribe',audio)
-    def synthesize(self,text):return self._call('synthesize',text)
+    def synthesize(self,text,options=None):return self._call('synthesize',text,options)
     def info(self):
         with self.lifecycle:
-            return {**self.state,'pid':self.process.pid if self.process and self.process.is_alive() else None,
+            voices=female_voices()
+            female=self.settings.get('voice_style','male')=='female'
+            quick=self.settings.get('transcription_mode','fast')=='fast' and fast_model() is not None
+            return {**self.state,'engine':(voices[0][1]+' · Português BR') if female and voices else 'Piper · Português BR',
+                    'female_available':bool(voices),'female_name':voices[0][1] if voices else '',
+                    'transcription':('Whisper base · Rápida' if quick else 'Whisper small · Mais precisa'),
+                    'pid':self.process.pid if self.process and self.process.is_alive() else None,
                     'busy':self.busy,'cpu_threads':1}
 
     def release_idle(self):

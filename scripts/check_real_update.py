@@ -57,7 +57,8 @@ def main():
         old=json.loads(connection.read_text())
         client=httpx.Client(base_url=f"http://127.0.0.1:{old['port']}",headers={'X-Pacoca-Token':old['token']},trust_env=False,timeout=10)
         initial=client.get('/api/status').json()
-        assert initial['version']=='1.1.1' and not initial['engine']['loaded']
+        baseline=initial['version']
+        assert baseline!=__version__ and not initial['engine']['loaded']
         # Initiate a check now rather than wait for the periodic public channel check.
         client.post('/api/updates/check').raise_for_status()
         receipt=data/'Updates/last-result.json'
@@ -80,6 +81,7 @@ def main():
         assert any(m['content']==marker for m in new_client.get('/api/memories').json())
         assert (root/'_internal/wakeword/en-us/mdef').is_file()
         assert (root/'_internal/pacoca/wake.dic').is_file()
+        assert (root/'_internal/speech/whisper-base/model.bin').is_file()
         assert (model.stat().st_size,model.stat().st_mtime_ns)==model_before
         assert (Path(result['transaction'])/'database.sqlite3').exists()
         new_client.post('/api/shutdown');new_client.close();new_client=None
@@ -95,7 +97,7 @@ def main():
         while new_client.get('/api/updates').json()['phase']!='current':
             if time.monotonic()>deadline:raise TimeoutError('Initial automatic check after a recent Windows boot')
             time.sleep(.4)
-        report={'from':'1.1.1','to':__version__,'seconds':round(time.monotonic()-started,2),'phases':phases,
+        report={'from':baseline,'to':__version__,'seconds':round(time.monotonic()-started,2),'phases':phases,
             'actual_qt_health':health,'baseline_initial_check':'API followed by automatic download and install',
             'automatic_download_install':True,'signed_manifest':True,
             'final_cold_automatic_check':True,

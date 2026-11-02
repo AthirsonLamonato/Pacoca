@@ -16,6 +16,7 @@ from test_core import FakeRuntime
 
 @pytest.mark.parametrize('text,action,app',[
     ('Abre o Valorant','open','valorant'),('Pode abrir o Spotify no PC?','open','spotify'),
+    ('Paçoca, abre os Spotify.','open','spotify'),
     ('abre o cs e abre o mata mata','deathmatch','cs2'),
     ('Abre o CS e entra no mata-mata','deathmatch','cs2'),
     ('Abre o Counter-Strike 2 e iniciar o deathmatch','deathmatch','cs2'),
@@ -58,6 +59,17 @@ def test_catalog_does_not_guess_between_installed_apps(tmp_path):
     catalog.entries=lambda:[{'name':'Steam','id':'steam.exe'},{'name':'Steam Support','id':'https://help.steampowered.com'}]
     assert catalog.resolve('Steam')['id']=='steam.exe'
     with pytest.raises(RuntimeError):catalog.resolve('Stea')
+
+
+@pytest.mark.asyncio
+async def test_known_running_app_does_not_enumerate_start_menu(tmp_path,monkeypatch):
+    catalog=ApplicationCatalog(Settings(tmp_path))
+    monkeypatch.setattr('pacoca.actions.windows.windows',lambda:[{'id':123,'title':'Spotify','process':'Spotify.exe'}])
+    monkeypatch.setattr('pacoca.actions.windows.focus_window',lambda hwnd:None)
+    def expensive():raise AssertionError('Start menu must not be consulted for an already open app')
+    monkeypatch.setattr('pacoca.actions.windows.applications',expensive)
+    result=await catalog.open('spotify',__import__('threading').Event(),async_noop)
+    assert result['verified'] and result['focused'] and result['app']=='Spotify'
 
 
 @pytest.mark.asyncio

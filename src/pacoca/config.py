@@ -27,6 +27,7 @@ def data_root() -> Path:
 
 
 DEFAULTS = dict(user_name="", assistant_name="Paçoca", voice_enabled=True, voice_speed=1.0,
+                voice_style="male", transcription_mode="fast",
                 speech_device="", microphone_id="", output_id="", wake_enabled=False,
                 wake_sensitivity="normal", wake_timeout=20, theme="dark", backend="auto",
                 context_size=4096, model_profile="light", cpu_threads=2, idle_seconds=60,

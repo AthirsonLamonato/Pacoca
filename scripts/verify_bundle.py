@@ -52,6 +52,11 @@ def main():
             stale.append('wakeword/'+name)
     if stale:
         raise RuntimeError('Rebuild the executable. Stale files: '+', '.join(stale))
+    for item in json.loads((ROOT/'packaging/speech-model.lock.json').read_text())['items']:
+        source=ROOT/'assets'/item['path']
+        bundled=ROOT/'dist/Pacoca/_internal/speech/whisper-base'/source.name
+        if not bundled.is_file() or hashlib.sha256(bundled.read_bytes()).hexdigest()!=item['sha256']:
+            raise RuntimeError('Missing or corrupt bundled speech resource: '+source.name)
     print('Executable code and UI match the current source.',flush=True)
 
 

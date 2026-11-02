@@ -18,7 +18,9 @@ Sem a chamada pelo nome ativada, o microfone abre durante a sessão iniciada por
 
 O botão **■** no canto superior interrompe fala e tarefas. Durante uma geração, **Parar** interrompe o turno atual. Uma operação do Windows já iniciada pode terminar; o cancelamento impede as etapas seguintes e descarta áudio e respostas atrasadas. Não existe desfazer universal para ações externas.
 
-Comece com fone de ouvido para reduzir eco. A captura usa cancelamento de eco e redução de ruído do dispositivo de áudio; a qualidade com alto-falantes depende do ambiente. A voz padrão desta distribuição é uma voz Piper em português brasileiro. A ativação por palavra “Paçoca” não é necessária durante uma sessão e não está habilitada nesta versão.
+Comece com fone de ouvido para reduzir eco. A captura usa cancelamento de eco e redução de ruído do dispositivo de áudio; a qualidade com alto-falantes depende do ambiente. Em Configurações → Minha voz, escolha a voz masculina Piper ou uma voz feminina pt-BR já instalada no Windows, como Microsoft Maria. As duas funcionam localmente; a opção feminina fica indisponível quando o Windows não tem essa voz. “Ouvir minha voz” permite experimentar a seleção antes de salvar. A chamada por “Paçoca” é opcional e fica desligada inicialmente.
+
+O reconhecimento **Rápida**, padrão desde a 1.3, usa Whisper base int8 com um thread de CPU. Para falas difíceis, escolha **Mais precisa**, que utiliza Whisper small e leva mais tempo. Os dois modelos acompanham a instalação; não há download durante a conversa. A transcrição e a resposta continuam locais. Aplicativos, jogos e serviços podem levar seu próprio tempo para abrir ou conectar.
 
 ## Memória e conhecimento
 

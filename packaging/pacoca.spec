@@ -8,13 +8,14 @@ datas=[(str(root/'src/pacoca/ui'),'pacoca/ui'),
        (str(root/'src/pacoca/update_helper.ps1'),'pacoca'),
        (str(root/'src/pacoca/runtime-id.txt'),'pacoca'),
        (str(root/'src/pacoca/wake.dic'),'pacoca'),
+       (str(root/'assets/models/whisper-base'),'speech/whisper-base'),
        # Decoder probes this namespace while constructing its default config,
        # even when all actual acoustic/dictionary paths are explicit.
        (str(Path(get_model_path())/'en-us/en-us/README'),'pocketsphinx/model'),
        (str(Path(get_model_path())/'en-us/en-us'),'wakeword/en-us')]
 binaries=[]
 hiddenimports=[]
-hiddenimports+=['pocketsphinx._pocketsphinx']
+hiddenimports+=['pocketsphinx._pocketsphinx','win32com.client.dynamic','pythoncom']
 for package in ('piper','faster_whisper','ctranslate2','onnxruntime'):
     data,bins,hidden=collect_all(package)
     datas+=data;binaries+=bins;hiddenimports+=hidden

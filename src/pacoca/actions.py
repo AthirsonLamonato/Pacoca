@@ -60,7 +60,7 @@ def explicit_action(text):
     value=re.sub(r'(?i)^paçoca[,! ]+','',value)
     value=re.sub(r'(?i)\s*,?\s*por favor$','',value)
     n=normalized(value)
-    prefix=r'(?:(?:pode|poderia|consegue)\s+)?(?:abre|abra|abrir|inicia|inicie|iniciar)\s+(?:o\s+|a\s+)?'
+    prefix=r'(?:(?:pode|poderia|consegue)\s+)?(?:abre|abra|abrir|inicia|inicie|iniciar)\s+(?:(?:os?|as?)\s+)?'
     if re.match(prefix,n):
         tail=re.sub(prefix,'',n,count=1)
         if re.match(r'^(?:cs2?|counter[ -]strike(?: 2)?)\b',tail) and re.fullmatch(r'(?:cs2?|counter[ -]strike(?: 2)?)(?:\s+e\s+(?:abre|abra|abrir|entra|entre|entrar|inicia|inicie|iniciar|joga|jogue|jogar))?\s+(?:(?:o|no|um)\s+)?(?:mata[ -]?mata|deathmatch)',tail):
@@ -108,7 +108,7 @@ class ApplicationCatalog:
         self.settings=settings;self.cached=[];self.checked=0
 
     def entries(self,refresh=False):
-        if refresh or time.monotonic()-self.checked>120:
+        if refresh or time.monotonic()-self.checked>600:
             self.cached=windows.applications();self.checked=time.monotonic()
         return list(self.cached)
 
@@ -138,8 +138,12 @@ class ApplicationCatalog:
         return matches[0] if len(matches)==1 else next((w for w in matches if normalized(app['name']) in normalized(w['title'])),None)
 
     async def open(self,query,cancel,emit):
-        app=await asyncio.to_thread(self.resolve,query)
-        window=await asyncio.to_thread(self.window,app)
+        key=canonical_app(query)
+        app={'name':{'spotify':'Spotify','cs2':'Counter-Strike 2','valorant':'Valorant'}.get(key,key),'key':key}
+        window=await asyncio.to_thread(self.window,app) if key in PROCESSES else None
+        if window is None:
+            app=await asyncio.to_thread(self.resolve,query)
+            window=await asyncio.to_thread(self.window,app)
         if window is None:
             await asyncio.to_thread(spawn_catalog_app,app)
             deadline=time.monotonic()+90

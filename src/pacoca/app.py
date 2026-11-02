@@ -38,6 +38,8 @@ class ChangeSettings(BaseModel):
     user_name: str | None = Field(default=None,max_length=80)
     voice_enabled: bool | None = None
     voice_speed: float | None = Field(default=None,ge=.7,le=1.4)
+    voice_style: str | None = Field(default=None,pattern='^(male|female)$')
+    transcription_mode: str | None = Field(default=None,pattern='^(fast|precise)$')
     microphone_id: str | None = Field(default=None,max_length=500)
     output_id: str | None = Field(default=None,max_length=500)
     wake_enabled: bool | None = None
@@ -66,6 +68,12 @@ class ChatRequest(BaseModel):
     conversation_id: str
     text: str = Field(min_length=1,max_length=6000)
     voice: bool = False
+
+
+class PreviewVoice(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    voice_style: str | None = Field(default=None,pattern='^(male|female)$')
+    voice_speed: float | None = Field(default=None,ge=.7,le=1.4)
 
 
 class Text(BaseModel):
@@ -234,6 +242,8 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
     @app.patch("/api/settings")
     async def update_settings(changes: ChangeSettings):
         data = changes.model_dump(exclude_none=True)
+        if data.get('voice_style') == 'female' and not voice.info()['female_available']:
+            raise HTTPException(422,'A voz feminina de português brasileiro não está disponível neste Windows.')
         if 'application_paths' in data:
             if any(key not in ('cs2','valorant','spotify') for key in data['application_paths']):raise HTTPException(422,'Escolha CS2, Valorant ou Spotify.')
             for value in data['application_paths'].values():
@@ -337,15 +347,17 @@ def create_app(settings=None, runtime=None, *, start_engine=True, update_feed=No
         if len(body) > 16000*45*4 or len(body)%4:
             raise HTTPException(413,"Envie áudio PCM float32 de até 45 segundos.")
         try:
+            started = time.monotonic()
             text = await asyncio.to_thread(voice.transcribe,body)
-            return {"text":text}
+            return {"text":text,"latency_ms":round((time.monotonic()-started)*1000)}
         except (ValueError,RuntimeError,FileNotFoundError) as exc:
             raise HTTPException(400,str(exc))
 
     @app.post("/api/voice/preview")
-    async def preview_voice():
+    async def preview_voice(options: PreviewVoice | None = None):
         try:
-            wav = await asyncio.to_thread(voice.synthesize,"Oi! Eu sou a Paçoca. Sua inteligência pessoal, aqui no seu computador.")
+            wav = await asyncio.to_thread(voice.synthesize,"Oi! Eu sou a Paçoca. Sua inteligência pessoal, aqui no seu computador.",
+                                          options.model_dump(exclude_none=True) if options else None)
             return Response(wav,media_type="audio/wav")
         except Exception as exc:
             raise HTTPException(503,"Não consegui carregar a voz local: " + str(exc)[:180])

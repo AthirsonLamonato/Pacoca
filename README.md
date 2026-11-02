@@ -8,9 +8,9 @@ Uma nova aplicação desktop para Windows: conversa natural por texto e voz, mem
 
 ## Instalar
 
-[**Baixar a Paçoca para Windows**](https://github.com/AthirsonLamonato/Pacoca/releases/latest/download/Pacoca-Setup.exe) · [Versão 1.2.0](https://github.com/AthirsonLamonato/Pacoca/releases/tag/v1.2.0)
+[**Baixar a Paçoca para Windows**](https://github.com/AthirsonLamonato/Pacoca/releases/latest/download/Pacoca-Setup.exe) · [Versão 1.3.0](https://github.com/AthirsonLamonato/Pacoca/releases/tag/v1.3.0)
 
-**Versão 1.2.0:** ativação local por “Paçoca”, retorno automático à espera e botão para pausar o microfone. Mantém o modo leve, as atualizações autenticadas e os comandos de aplicativos, jogos e Spotify.
+**Versão 1.3.0:** reconhecimento de fala rápido por padrão, opção de voz feminina pt-BR do Windows e abertura direta de aplicativos já em execução. Ruídos não cancelam uma abertura antes de um novo pedido ser reconhecido. Mantém a ativação local por “Paçoca”, o modo leve e as atualizações autenticadas.
 
 Execute **`release/Pacoca-Setup.exe`**. O instalador inclui interface, motor de IA, transcrição, voz e navegador de automação. Ele baixa o modelo leve Qwen3 1.7B Q4_K_M de aproximadamente 1,1 GB, em revisão e SHA-256 fixados. Não exige Python, Ollama nem outro aplicativo de IA. O modelo 8B é opcional na instalação; cópias válidas já instaladas são preservadas.
 

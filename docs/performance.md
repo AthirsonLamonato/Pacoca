@@ -1,5 +1,9 @@
 # Performance e Latência
 
+Este documento descreve o projeto legado a partir da seção seguinte. Para a aplicação desktop recriada em `src/pacoca`, consulte [Usar a Paçoca](USAR-PACOCA.md). Desde a 1.3, o reconhecimento padrão é Whisper base int8, em processo de um thread com teto de CPU de 10% do computador e liberação por inatividade. Whisper small continua opcional em Configurações. Pedidos explícitos, como “abre o Spotify”, usam a ação direta sem carregar o modelo de conversa; aplicativos conhecidos já abertos dispensam a consulta ao menu Iniciar.
+
+`python scripts/check_voice_speed.py` mede o reconhecimento com áudio sintético, testa a seleção de voz e verifica que ruído não cancela uma ação. `--exe dist/Pacoca/Pacoca.exe` repete no executável distribuído. Não captura o microfone humano nem abre aplicativos externos. O tempo total também depende do término da fala, da inicialização do processo e do aplicativo solicitado; um resultado sintético não comprova a latência percebida em um microfone real.
+
 > Guia para diagnosticar lentidão e tunar o Paçoca em hardware modesto (CLAUDE.md
 > exige que o projeto rode em 4GB RAM, CPU sem GPU).
 

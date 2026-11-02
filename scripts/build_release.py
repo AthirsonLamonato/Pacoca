@@ -117,6 +117,7 @@ def sources_and_notices():
       'llama-MIT.txt':'https://raw.githubusercontent.com/ggml-org/llama.cpp/b12032/LICENSE',
       'Qwen-APACHE.txt':'https://huggingface.co/Qwen/Qwen3-8B/resolve/main/LICENSE',
       'Piper-GPL3.txt':'https://raw.githubusercontent.com/OHF-Voice/piper1-gpl/main/COPYING',
+      'Whisper-MIT.txt':'https://raw.githubusercontent.com/openai/whisper/v20240930/LICENSE',
     }
     for name,url in urls.items():
         download(url,licenses/name)
@@ -160,7 +161,8 @@ def main():
     if not args.skip_executable:
         dependencies=(ROOT/'packaging/requirements.lock').read_text(encoding='utf-8-sig').encode('utf-8')
         wake_model=json.dumps(json.loads((ROOT/'packaging/wake-model.lock.json').read_text(encoding='utf-8')),sort_keys=True,separators=(',',':')).encode('utf-8')
-        identity=hashlib.sha256(dependencies+wake_model+platform.python_version().encode()+b'pacoca-runtime-3-wakeword').hexdigest()
+        speech_model=json.dumps(json.loads((ROOT/'packaging/speech-model.lock.json').read_text(encoding='utf-8')),sort_keys=True,separators=(',',':')).encode('utf-8')
+        identity=hashlib.sha256(dependencies+wake_model+speech_model+platform.python_version().encode()+b'pacoca-runtime-4-fast-speech').hexdigest()
         (ROOT/'src/pacoca/runtime-id.txt').write_text(identity+'\n',encoding='utf-8')
         # A module edited during an earlier analysis can predate the cached PYZ,
         # making incremental timestamp checks reuse stale code. Always rebuild.

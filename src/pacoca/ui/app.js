@@ -470,7 +470,7 @@ async function interrupt() {
   $("#activity").hidden = true;
 }
 async function playNext() {
-  if (state.player || !state.audioQueue.length) return;
+  if (state.player || state.recording || state.processing || !state.audioQueue.length) return;
   const item = state.audioQueue.shift();
   if (state.ignored.has(item.run_id)) return playNext();
   const binary = atob(item.audio);
@@ -1061,6 +1061,11 @@ async function loadSettings() {
   }
   $("#setting-retention").value = String(s.retention_days);
   $("#setting-speed").value = s.voice_speed;
+  $('#setting-voice-style').value = s.voice_style || 'male';
+  $('#setting-voice-style option[value=female]').disabled = !state.status?.voice?.female_available;
+  $('#setting-voice-style option[value=female]').textContent = state.status?.voice?.female_available
+    ? 'Feminina · ' + state.status.voice.female_name : 'Feminina · indisponível neste Windows';
+  $('#setting-transcription').value = s.transcription_mode || 'fast';
   $('#setting-wake').checked = Boolean(s.wake_enabled);
   $('#setting-wake-sensitivity').value = s.wake_sensitivity || 'normal';
   $('#setting-wake-timeout').value = String(s.wake_timeout || 20);
@@ -1118,6 +1123,8 @@ async function saveSettings() {
     spotify_device:$('#setting-spotify-device').value.trim(),
     retention_days: Number($("#setting-retention").value),
     voice_speed: Number($("#setting-speed").value),
+    voice_style: $('#setting-voice-style').value,
+    transcription_mode: $('#setting-transcription').value,
     wake_enabled: $('#setting-wake').checked,
     wake_sensitivity: $('#setting-wake-sensitivity').value,
     wake_timeout: Number($('#setting-wake-timeout').value),
@@ -1362,13 +1369,15 @@ function audioChunk(chunk) {
       }
       state.preRoll = [];
       state.silent = 0;
-      interrupt();
+      // A sound must not cancel an application launch. A recognized new request
+      // interrupts in send(); playback pauses immediately for conversational use.
+      if (state.player) stopPlayback();
       $("#voice-state").textContent = "Pode falar, estou ouvindo";
     }
   } else {
     state.chunks.push(chunk);
     state.silent = voiced ? 0 : state.silent + 1;
-    if (state.silent > 23 || state.chunks.length >= 1300) {
+    if (state.silent > 14 || state.chunks.length >= 1300) {
       const chunks = state.chunks;
       state.chunks = [];
       state.recording = false;
@@ -1406,7 +1415,7 @@ async function transcribe(chunks) {
     let text = result.text || '';
     if (confirmWake) {
       // Transcription confirms the actual name before any command is executed.
-      const called = /^(?:(?:oi|ei|e|hey|olá)[,!.?\s]+)?pa[çcs]oca\b[,!.?:\s-]*/i;
+      const called = /^(?:(?:oi|ei|e|hey|olá)[,!.?\s]+)?pa(?:ç|c|ss?)o(?:al?)?ca\b[,!.?:\s-]*/i;
       if (!called.test(text)) { endVoice(); return; }
       text = text.replace(called, '').trim();
     }
@@ -1425,6 +1434,7 @@ async function transcribe(chunks) {
   } finally {
     state.processing = false;
     state.lastVoiceActivity = Date.now();
+    playNext();
   }
 }
 
@@ -1497,7 +1507,9 @@ $("#preview-voice").onclick = safely(async () => {
   const b = $("#preview-voice");
   b.disabled = true;
   try {
-    const r = await api("/voice/preview", { method: "POST" });
+    const r = await api("/voice/preview", { method: "POST", body: {
+      voice_style: $('#setting-voice-style').value, voice_speed: Number($('#setting-speed').value)
+    } });
     const url = URL.createObjectURL(await r.blob());
     const a = new Audio(url);
     state.previewPlaying = true;

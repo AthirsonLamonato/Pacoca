@@ -100,13 +100,18 @@ def download(item):
             time.sleep(min(2 ** attempt, 15))
 
 
+def get_speech_items():
+    return json.loads((ROOT/'packaging/speech-model.lock.json').read_text(encoding='utf-8'))['items']
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--resolve", action="store_true")
     args = p.parse_args()
     items = resolve() if args.resolve or not LOCK.exists() else json.loads(LOCK.read_text(encoding="utf-8"))["items"]
+    speech_items = get_speech_items()
     with ThreadPoolExecutor(max_workers=4) as pool:
-        list(pool.map(download, items))
+        list(pool.map(download, items + speech_items))
     for item in items:
         if item.get("extract"):
             out = (ASSETS / item["extract"]).resolve()

@@ -28,6 +28,7 @@ async def main():
     parser.add_argument('--settings-only', action='store_true')
     args = parser.parse_args()
     name = 'wake-native' if args.exe else 'wake-browser'
+    name += '-split' if args.split_pause else '-settings' if args.settings_only else '-together'
     data = ROOT / '.test-data' / name
     data.mkdir(parents=True, exist_ok=True)
     connection = data / 'connection.json'; connection.unlink(missing_ok=True)
