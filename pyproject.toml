@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pacoca-desktop"
+version = "1.1.1"
+description = "Sua inteligência pessoal. No seu computador."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi", "uvicorn", "httpx", "pydantic", "python-multipart", "numpy",
+  "faster-whisper", "piper-tts", "PySide6", "psutil", "playwright", "pillow", "pypdf",
+  "pywinauto; sys_platform == 'win32'", "pycaw; sys_platform == 'win32'",
+  "comtypes; sys_platform == 'win32'", "ask-sdk-webservice-support", "cryptography", "packaging",
+  "winrt-Windows.Media.Control; sys_platform == 'win32'",
+  "winrt-Windows.Media.Ocr; sys_platform == 'win32'",
+  "winrt-Windows.Graphics.Imaging; sys_platform == 'win32'",
+  "winrt-Windows.Storage.Streams; sys_platform == 'win32'",
+  "winrt-Windows.Globalization; sys_platform == 'win32'",
+  "winrt-Windows.Media; sys_platform == 'win32'",
+]
+
+[project.scripts]
+pacoca = "pacoca.desktop:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pacoca = ["ui/*", "*.ps1", "runtime-id.txt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests_next"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

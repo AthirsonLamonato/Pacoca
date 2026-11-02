@@ -1,0 +1,22 @@
+name: Paçoca Desktop
+on:
+  workflow_dispatch:
+  push:
+    paths: ['src/**', 'tests_next/**', 'scripts/**', 'packaging/**', 'pyproject.toml', '.github/workflows/desktop.yml']
+  pull_request:
+    paths: ['src/**', 'tests_next/**', 'scripts/**', 'packaging/**', 'pyproject.toml']
+jobs:
+  tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: packaging/requirements.lock
+      - run: pip install -r packaging/requirements.lock
+      - run: python -m pytest tests_next -p pytest_asyncio.plugin -q
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      - run: python -m compileall -q src/pacoca

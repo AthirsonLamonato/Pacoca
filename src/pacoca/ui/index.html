@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#111213" />
+    <title>Paçoca · Sua inteligência pessoal</title>
+    <link rel="icon" type="image/svg+xml" href="/static/icon.svg" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#" aria-label="Paçoca, início"
+          ><img src="/static/icon.svg" alt="" /><span
+            >paçoca<span class="brand-dot">.</span></span
+          ><small>PERSONAL INTELLIGENCE</small></a
+        >
+        <button id="new-chat" class="new-chat">
+          <span>＋</span> Nova conversa <kbd>Ctrl N</kbd>
+        </button>
+        <nav aria-label="Navegação principal">
+          <button class="nav-item active" data-page="chat">
+            <span class="nav-icon">◌</span>Conversar<span
+              class="nav-mark"
+            ></span>
+          </button>
+          <button class="nav-item" data-page="memory">
+            <span class="nav-icon">✧</span>Memória
+          </button>
+          <button class="nav-item" data-page="knowledge">
+            <span class="nav-icon">▧</span>Conhecimento
+          </button>
+          <button class="nav-item" data-page="tasks">
+            <span class="nav-icon">☷</span>Atividades<span
+              id="task-count"
+              class="nav-count"
+              hidden
+            ></span>
+          </button>
+        </nav>
+        <div class="recent-header">
+          <span>SUAS CONVERSAS</span
+          ><button
+            id="refresh-chats"
+            title="Atualizar conversas"
+            aria-label="Atualizar conversas"
+          >
+            ↻
+          </button>
+        </div>
+        <div id="conversation-list" class="conversation-list"></div>
+        <div class="sidebar-bottom">
+          <div class="local-badge">
+            <span class="status-dot"></span>
+            <div>
+              <strong>Seu espaço. Sua IA.</strong
+              ><small>Processamento no computador</small>
+            </div>
+            <span class="tiny-lock">⌑</span>
+          </div>
+          <button class="nav-item" data-page="settings">
+            <span class="nav-icon">⚙</span>Configurações
+          </button>
+          <div class="profile">
+            <span id="user-avatar" class="avatar">V</span>
+            <div>
+              <strong id="profile-name">Seu espaço pessoal</strong
+              ><small id="app-version">Paçoca</small>
+            </div>
+            <span class="profile-local">LOCAL</span>
+          </div>
+        </div>
+      </aside>
+      <main>
+        <header class="topbar">
+          <div>
+            <span id="breadcrumb">Seu espaço pessoal</span
+            ><span class="breadcrumb-slash">/</span
+            ><strong id="page-title">Conversar</strong>
+          </div>
+          <div class="header-right">
+            <span class="privacy-label"
+              ><span class="status-dot"></span> Inteligência local</span
+            ><button
+              id="emergency"
+              class="icon-button"
+              title="Parar fala e tarefas"
+              aria-label="Parar fala e tarefas"
+            >
+              ■
+            </button>
+          </div>
+        </header>
+        <div id="update-banner" class="update-banner" hidden aria-live="polite">
+          <span id="update-banner-text"></span>
+          <button id="update-banner-apply" class="secondary">Atualizar e reiniciar</button>
+        </div>
+        <section id="page-chat" class="page chat-page">
+          <div id="welcome" class="welcome">
+            <div class="eyebrow">
+              <span></span> UM POUCO DE INTELIGÊNCIA. MUITO DE VOCÊ.
+            </div>
+            <div class="orb-stage" aria-hidden="true">
+              <div class="orbit orbit-one"></div>
+              <div class="orbit orbit-two"></div>
+              <div class="orb">
+                <div class="orb-core"></div>
+                <div class="orb-glint"></div>
+                <div class="orb-eye eye-left"></div>
+                <div class="orb-eye eye-right"></div>
+              </div>
+              <span class="orb-star star-one">✦</span
+              ><span class="orb-star star-two">✧</span>
+            </div>
+            <h1>Seu mundo, com<br />um toque de <em>Paçoca.</em></h1>
+            <p>
+              Vamos pensar, criar e cuidar das coisas juntos.<br />Eu estou
+              aqui. E tudo fica no seu computador.
+            </p>
+            <button id="start-voice" class="voice-start">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Zm-6 8v1a6 6 0 0 0 12 0v-1M12 18v3m-3 0h6"
+                /></svg
+              >Vamos conversar<span>↗</span>
+            </button>
+            <div class="suggestions">
+              <button
+                data-prompt="Me ajude a organizar meu dia. Vamos começar entendendo minhas prioridades."
+              >
+                <span class="suggestion-icon">☀</span
+                ><strong>Organizar meu dia</strong
+                ><small>Vamos colocar as ideias em ordem</small
+                ><span class="suggestion-arrow">↗</span>
+              </button>
+              <button
+                data-prompt="Quero criar algo novo. Me ajude a explorar uma ideia."
+              >
+                <span class="suggestion-icon lavender">✧</span
+                ><strong>Tirar uma ideia do papel</strong
+                ><small>Um bom começo faz diferença</small
+                ><span class="suggestion-arrow">↗</span>
+              </button>
+              <button
+                data-prompt="O que você consegue fazer no meu computador? Consulte as informações reais dele."
+              >
+                <span class="suggestion-icon green">⌘</span
+                ><strong>Explorar meu computador</strong
+                ><small>Uma ajudinha nas coisas do dia a dia</small
+                ><span class="suggestion-arrow">↗</span>
+              </button>
+            </div>
+          </div>
+          <div id="messages" class="messages" aria-live="polite" hidden></div>
+          <div id="activity" class="activity" hidden>
+            <span class="thinking-dot"></span
+            ><span id="activity-label">Estou pensando</span
+            ><button id="stop-response">Parar</button>
+          </div>
+          <div class="composer-wrap">
+            <div id="voice-session" class="voice-session" hidden>
+              <span class="voice-live-dot"></span
+              ><span id="voice-state">Estou ouvindo você</span>
+              <div class="sound-bars"><i></i><i></i><i></i><i></i><i></i></div>
+              <button id="end-voice">
+                Encerrar conversa por voz <span>×</span>
+              </button>
+            </div>
+            <form id="composer" class="composer">
+              <div class="composer-top">
+                <textarea
+                  id="prompt"
+                  rows="1"
+                  placeholder="O que vamos fazer juntos?"
+                  aria-label="Mensagem para a Paçoca"
+                  maxlength="6000"
+                ></textarea>
+              </div>
+              <div class="composer-tools">
+                <span class="composer-hint"
+                  ><span>✧</span> Seu pensamento pode começar por aqui</span
+                >
+                <div>
+                  <button
+                    type="button"
+                    id="toggle-speech"
+                    class="composer-button"
+                    aria-label="Ativar resposta por voz"
+                    title="Resposta por voz"
+                  >
+                    ♫</button
+                  ><button
+                    type="button"
+                    id="mic-button"
+                    class="composer-button"
+                    aria-label="Iniciar conversa por voz"
+                    title="Conversar por voz"
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM6 11v1a6 6 0 0 0 12 0v-1M12 18v3m-3 0h6"
+                      />
+                    </svg></button
+                  ><button
+                    type="submit"
+                    id="send"
+                    class="send-button"
+                    aria-label="Enviar mensagem"
+                  >
+                    ↑
+                  </button>
+                </div>
+              </div>
+            </form>
+            <div class="composer-footer">
+              <span id="engine-label"
+                ><span class="status-dot loading"></span> Preparando sua
+                Paçoca</span
+              ><span>Ela pode errar. Confira decisões importantes.</span>
+            </div>
+          </div>
+        </section>
+        <section id="page-memory" class="page content-page" hidden>
+          <div class="section-heading">
+            <div class="eyebrow">FEITA DE CONVERSAS, COMO A GENTE.</div>
+            <h1>O que fica <em>comigo.</em></h1>
+            <p>
+              As coisas que você escolhe me contar. Você pode mudar ou esquecer
+              quando quiser.
+            </p>
+          </div>
+          <div class="section-toolbar">
+            <div class="search-box">
+              <span>⌕</span
+              ><input
+                id="memory-search"
+                placeholder="Encontrar uma lembrança"
+                aria-label="Buscar memórias"
+              />
+            </div>
+            <button id="add-memory" class="primary">
+              ＋ Adicionar memória
+            </button>
+          </div>
+          <div id="memory-list" class="card-grid"></div>
+        </section>
+        <section id="page-knowledge" class="page content-page" hidden>
+          <div class="section-heading">
+            <div class="eyebrow">SEU CONHECIMENTO, MAIS PERTO.</div>
+            <h1>Um lugar para <em>suas ideias.</em></h1>
+            <p>
+              Escolha as pastas que posso consultar. Seus documentos continuam
+              aqui, no seu PC.
+            </p>
+          </div>
+          <div class="section-toolbar">
+            <div class="search-box">
+              <span>⌕</span
+              ><input
+                id="knowledge-search"
+                placeholder="Buscar nos documentos"
+                aria-label="Buscar documentos"
+              />
+            </div>
+            <button id="index-folders" class="secondary">
+              ↻ Atualizar índice</button
+            ><button id="add-folder" class="primary">＋ Adicionar pasta</button>
+          </div>
+          <div id="folder-list" class="folder-list"></div>
+          <div class="list-heading">
+            <span>DOCUMENTOS DISPONÍVEIS</span><span id="index-state"></span>
+          </div>
+          <div id="document-list" class="document-list"></div>
+        </section>
+        <section id="page-tasks" class="page content-page" hidden>
+          <div class="section-heading">
+            <div class="eyebrow">UM PASSO DE CADA VEZ.</div>
+            <h1>As coisas que <em>fazemos.</em></h1>
+            <p>
+              Acompanhe pedidos, ações e resultados. Você continua no controle.
+            </p>
+          </div>
+          <div class="tabs">
+            <button class="active" data-task-tab="tasks">Atividades</button
+            ><button data-task-tab="reminders">Lembretes</button>
+          </div>
+          <div id="task-list" class="task-list"></div>
+          <div id="reminder-list" class="task-list" hidden></div>
+        </section>
+        <section id="page-settings" class="page content-page" hidden>
+          <div class="section-heading">
+            <div class="eyebrow">DO SEU JEITO.</div>
+            <h1>Uma Paçoca <em>mais sua.</em></h1>
+            <p>Um pouco de ajuste para a gente se entender ainda melhor.</p>
+          </div>
+          <div class="settings-grid">
+            <div class="settings-card">
+              <h2>✧ Você e a Paçoca</h2>
+              <label
+                >Como posso chamar você?<input
+                  id="setting-name"
+                  maxlength="80"
+                  placeholder="Seu nome" /></label
+              ><label
+                >Aparência<select id="setting-theme">
+                  <option value="dark">Noite acolhedora</option>
+                  <option value="light">Dia tranquilo</option>
+                </select></label
+              ><label class="switch-row"
+                ><span
+                  >Iniciar com o Windows<small
+                    >Fico por perto quando você precisar.</small
+                  ></span
+                ><input type="checkbox" id="setting-startup"
+              /></label>
+            </div>
+            <div class="settings-card">
+              <h2>♫ Nossa conversa</h2>
+              <label
+                >Microfone<select id="setting-mic">
+                  <option value="">Microfone padrão</option>
+                </select></label
+              ><label
+                >Saída de áudio<select id="setting-output">
+                  <option value="">Saída padrão</option>
+                </select></label
+              ><label
+                >Velocidade da voz<span class="range-row"
+                  ><input
+                    id="setting-speed"
+                    type="range"
+                    min="0.7"
+                    max="1.4"
+                    step="0.05"
+                    value="1"
+                  /><output id="speed-output">1×</output></span
+                ></label
+              ><button id="preview-voice" class="secondary">
+                ▶ Ouvir minha voz
+              </button>
+            </div>
+            <div class="settings-card">
+              <h2>⌘ Inteligência local</h2>
+              <div id="model-detail" class="model-detail"></div>
+              <label>Modo de inteligência<select id="setting-profile">
+                <option value="light">Leve · recomendado para o dia a dia</option>
+                <option value="advanced">Avançado · modelo 8B opcional</option>
+              </select></label>
+              <label>Uso de CPU<select id="setting-threads">
+                <option value="1">Mínimo · 1 thread</option><option value="2">Leve · 2 threads</option>
+                <option value="3">3 threads</option><option value="4">4 threads</option>
+              </select></label>
+              <label>Liberar modelos sem uso<select id="setting-idle">
+                <option value="15">Após 15 segundos</option><option value="60">Após 1 minuto</option>
+                <option value="120">Após 2 minutos</option><option value="300">Após 5 minutos</option>
+              </select></label>
+              <label class="switch-row"><span>Preservar jogos<small>Libera a GPU e mantém o modo leve enquanto você joga.</small></span>
+                <input id="setting-game-guard" type="checkbox" /></label>
+              <label
+                >Processamento<select id="setting-backend">
+                  <option value="auto">
+                    GPU quando disponível · somente no modo avançado
+                  </option>
+                  <option value="cpu">Somente processador (CPU)</option>
+                </select></label
+              >
+              <p class="field-note">
+                O modo leve usa CPU limitada. Os modelos carregam quando necessários e são liberados depois.
+              </p>
+              <button id="restart-engine" class="secondary">
+                ↻ Liberar inteligência agora</button
+              ><button id="diagnostics" class="text-button">
+                Ver diagnóstico
+              </button>
+            </div>
+            <div class="settings-card">
+              <h2>⌑ Privacidade e dados</h2>
+              <div class="privacy-card">
+                <span class="status-dot"></span>
+                <div>
+                  <strong>Seus pensamentos ficam aqui.</strong>
+                  <p>
+                    Conversa, voz e memória são processadas no seu computador.
+                    Nenhuma API de IA externa.
+                  </p>
+                </div>
+              </div>
+              <label
+                >Manter registros de atividades por<select
+                  id="setting-retention"
+                >
+                  <option value="30">30 dias</option>
+                  <option value="90">90 dias</option>
+                  <option value="365">1 ano</option>
+                </select></label
+              ><button id="export-data" class="secondary">
+                ↓ Exportar minhas conversas
+              </button>
+            </div>
+            <div class="settings-card">
+              <h2>↻ Sempre por perto</h2>
+              <p id="update-status">Verificando o estado da instalação.</p>
+              <label class="switch-row"><span>Atualizar automaticamente<small>Baixa correções e espera uma oportunidade sem jogos ou tarefas.</small></span><input id="setting-updates" type="checkbox" /></label>
+              <label class="switch-row"><span>Instalar ao fechar<small>Preserva conversas e modelos já instalados.</small></span><input id="setting-update-exit" type="checkbox" /></label>
+              <button id="check-updates" class="secondary">Procurar atualização</button>
+              <button id="download-update" class="secondary" hidden>Baixar atualização</button>
+              <button id="apply-update" class="secondary" hidden>Atualizar e reiniciar</button>
+              <progress id="update-progress" max="100" value="0" hidden></progress>
+            </div>
+            <div class="settings-card">
+              <h2>Jogos e Spotify</h2>
+              <p>A Paçoca procura os aplicativos instalados. Se algum não aparecer, escolha seu executável.</p>
+              <div id="application-paths"></div>
+              <label>Dispositivo preferido do Spotify<input id="setting-spotify-device" maxlength="160" placeholder="Nome exato da Alexa ou do celular (opcional)" /></label>
+              <p>Diga “abre o Valorant”, “abre o CS e entra no mata-mata” ou “toca [música e artista] na Alexa”. O Spotify precisa estar conectado à sua conta Premium.</p>
+            </div>
+            <div class="settings-card wide">
+              <h2>◌ Alexa, quando você quiser</h2>
+              <p>
+                A Paçoca funciona sozinha. A integração opcional com o Echo usa
+                a internet e os serviços da Amazon.
+              </p>
+              <label class="switch-row"
+                ><span
+                  >Ativar integração Alexa<small
+                    >Requer configurar sua skill e um endpoint HTTPS.</small
+                  ></span
+                ><input id="setting-alexa" type="checkbox"
+              /></label>
+              <div class="two-fields">
+                <label
+                  >ID da skill<input
+                    id="setting-skill-id"
+                    placeholder="amzn1.ask.skill.…"
+                    maxlength="200" /></label
+                ><label
+                  >ID do usuário autorizado<input
+                    id="setting-alexa-user"
+                    placeholder="amzn1.ask.account.…"
+                    maxlength="300"
+                /></label>
+              </div>
+              <p class="field-note">
+                A configuração externa e os testes no Echo estão descritos no
+                guia que acompanha a Paçoca. Ações sensíveis continuam exigindo
+                autorização no computador.
+              </p>
+            </div>
+          </div>
+          <div class="settings-footer">
+            <span id="settings-feedback"
+              >As alterações são salvas no seu computador.</span
+            ><button id="save-settings" class="primary">
+              Salvar preferências
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+    <dialog id="modal">
+      <button class="modal-close" aria-label="Fechar">×</button>
+      <div id="modal-content"></div>
+    </dialog>
+    <dialog id="onboarding">
+      <div class="onboarding-content">
+        <img src="/static/icon.svg" alt="" />
+        <div class="eyebrow">OI, EU SOU A PAÇOCA.</div>
+        <h1>Seu computador.<br /><em>Nossa próxima ideia.</em></h1>
+        <p>
+          Uma inteligência pessoal para conversar, criar e ajudar nas suas
+          tarefas. Tudo aqui, com você.
+        </p>
+        <label
+          >Como posso chamar você?<input
+            id="onboarding-name"
+            placeholder="Seu nome"
+            maxlength="80"
+            autocomplete="given-name"
+        /></label>
+        <div class="onboarding-points">
+          <span>⌑ Conversas locais</span><span>♫ Voz sem nuvem</span
+          ><span>✧ Memória sob seu controle</span>
+        </div>
+        <button id="finish-onboarding" class="primary">
+          Vamos começar <span>↗</span></button
+        ><small
+          >O primeiro carregamento pode levar um pouco mais de tempo.</small
+        >
+      </div>
+    </dialog>
+  </body>
+</html>

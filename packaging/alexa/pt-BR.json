@@ -1,0 +1,15 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "paçoca assistente",
+      "intents": [
+        {"name": "CommandIntent", "slots": [{"name": "query", "type": "AMAZON.SearchQuery"}], "samples": ["executar {query}", "peça ao computador para {query}", "quero que você faça {query}"]},
+        {"name": "TaskStatusIntent", "samples": ["como está meu pedido", "qual o resultado", "meu pedido terminou", "consultar minha tarefa"]},
+        {"name": "AMAZON.HelpIntent", "samples": []},
+        {"name": "AMAZON.CancelIntent", "samples": []},
+        {"name": "AMAZON.StopIntent", "samples": []},
+        {"name": "AMAZON.FallbackIntent", "samples": []}
+      ], "types": []
+    }
+  }
+}

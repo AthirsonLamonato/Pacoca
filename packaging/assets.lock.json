@@ -1,0 +1,81 @@
+{
+  "engine": "llama.cpp b12032 Vulkan / CPU",
+  "model": "Qwen3 1.7B Q4_K_M (light), Qwen3 8B Q4_K_M (optional)",
+  "items": [
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12032/llama-b12032-bin-win-vulkan-x64.zip",
+      "path": "downloads/llama.zip",
+      "size": 37523450,
+      "sha256": "19a8bbf269fa683ae7bc04f886c9c2a93e0655c2606f37d2b60069bf9e8bcc32",
+      "extract": "engine"
+    },
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12032/llama-b12032-bin-win-cuda-12.4-x64.zip",
+      "path": "downloads/llama-b12032-bin-win-cuda-12.4-x64.zip",
+      "size": 279952566,
+      "sha256": "36c7e24ad048cceabf00c1b49d0f0411b954c6a410a7ff4300af8721a94fd00a",
+      "extract": "engine-cuda"
+    },
+    {
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12032/cudart-llama-bin-win-cuda-12.4-x64.zip",
+      "path": "downloads/cudart-llama-bin-win-cuda-12.4-x64.zip",
+      "size": 391443627,
+      "sha256": "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6",
+      "extract": "engine-cuda"
+    },
+    {
+      "url": "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf",
+      "path": "models/chat-8b.gguf",
+      "size": 5027783488,
+      "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785"
+    },
+    {
+      "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/model.bin",
+      "path": "models/whisper/model.bin",
+      "size": 483546902,
+      "sha256": "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671"
+    },
+    {
+      "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/config.json",
+      "path": "models/whisper/config.json",
+      "size": 2370,
+      "sha256": "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828"
+    },
+    {
+      "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/tokenizer.json",
+      "path": "models/whisper/tokenizer.json",
+      "size": 2203239,
+      "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab"
+    },
+    {
+      "url": "https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/vocabulary.txt",
+      "path": "models/whisper/vocabulary.txt",
+      "size": 459861,
+      "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913"
+    },
+    {
+      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/b4e358ffcb232591bf73a540e70f7de528e4174a/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx",
+      "path": "models/voice.onnx",
+      "size": 63201294,
+      "sha256": "858555e3a064209c57088fe6bd70c4c3dc54d03eaa00c45d5ecaf43a33f95aa7"
+    },
+    {
+      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/b4e358ffcb232591bf73a540e70f7de528e4174a/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json",
+      "path": "models/voice.onnx.json",
+      "size": 4855,
+      "sha256": "7e694de195ae3fc36dd732c445eb04fb49b649854893cb5506b978f0d50a1d6f"
+    },
+    {
+      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/b4e358ffcb232591bf73a540e70f7de528e4174a/pt/pt_BR/faber/medium/MODEL_CARD",
+      "path": "licenses/voice-MODEL_CARD",
+      "size": 279,
+      "sha256": "01f1a5bcfd0538782726059ae407eae9c2dd1b5b35f7298fd53a68de91afe563"
+    },
+    {
+      "url": "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/d7f544eead698dbd1f15126ef60b45a1e1933222/Qwen3-1.7B-Q4_K_M.gguf",
+      "path": "models/chat-light-q4.gguf",
+      "size": 1107409472,
+      "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+    }
+  ]
+}

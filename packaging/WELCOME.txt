@@ -1,0 +1,11 @@
+Sua inteligência pessoal. No seu computador.
+
+Um instalador inclui a Paçoca, reconhecimento de fala e voz em português. Ele baixa o modelo leve gratuito de 1,1 GB e verifica sua integridade. Python, Ollama e outros programas de IA não precisam ser instalados.
+
+A Paçoca começa sem carregar a inteligência nem o áudio. O modo leve usa a CPU com limite de consumo, libera os modelos após inatividade e preserva a placa de vídeo para jogos. O modelo avançado 8B é opcional e pode ser incluído marcando Recursos adicionais.
+
+Conversa, voz e memória são locais. Spotify, jogos online e atualizações usam internet. O Spotify precisa estar conectado à sua conta Premium. A transferência de reprodução usa os dispositivos disponíveis no Spotify Connect.
+
+As atualizações são autenticadas pela Paçoca, preservam seus modelos e conversas e esperam jogos e tarefas terminarem. Se a nova janela não abrir corretamente, a versão anterior é restaurada.
+
+A instalação inicial precisa de internet e aproximadamente 12 GB livres (ou 20 GB com o modelo avançado). Depois, a IA funciona offline. A velocidade depende do computador.

@@ -49,3 +49,10 @@ Thumbs.db
 
 # ── Modelos Whisper (baixados em runtime) ─────
 ~/.cache/whisper/
+
+# Nova Paçoca: modelos e ferramentas de build locais
+assets/
+.tools/
+.test-data/
+release/
+*.spec.tmp
