@@ -22,6 +22,12 @@ class TestHasDisplay:
                     "XDG_RUNTIME_DIR", "JENKINS_HOME"):
             monkeypatch.delenv(var, raising=False)
 
+    def _linux_env(self, monkeypatch):
+        """Exercita a decisão de Linux mesmo no runner Windows."""
+        self._clean_env(monkeypatch)
+        monkeypatch.setattr("output.overlay.platform.system", lambda: "Linux")
+        monkeypatch.setattr(os, "getuid", lambda: 1000, raising=False)
+
     def test_offscreen_platform_returns_false(self, monkeypatch):
         self._clean_env(monkeypatch)
         monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
@@ -43,7 +49,7 @@ class TestHasDisplay:
 
     def test_display_without_lock_returns_false(self, monkeypatch, tmp_path):
         """DISPLAY=:99 sem /tmp/.X99-lock deve retornar False."""
-        self._clean_env(monkeypatch)
+        self._linux_env(monkeypatch)
         monkeypatch.setenv("DISPLAY", ":99")
         # não cria o arquivo de lock → deve retornar False
         with patch("os.path.exists", return_value=False):
@@ -51,7 +57,7 @@ class TestHasDisplay:
 
     def test_display_with_lock_returns_true(self, monkeypatch):
         """DISPLAY=:0 com /tmp/.X0-lock existindo deve retornar True."""
-        self._clean_env(monkeypatch)
+        self._linux_env(monkeypatch)
         monkeypatch.setenv("DISPLAY", ":0")
         with patch("os.path.exists", return_value=True):
             result = self._has()
@@ -59,7 +65,7 @@ class TestHasDisplay:
 
     def test_wayland_with_existing_socket_returns_true(self, monkeypatch, tmp_path):
         """WAYLAND_DISPLAY com socket existente deve retornar True."""
-        self._clean_env(monkeypatch)
+        self._linux_env(monkeypatch)
         socket_file = tmp_path / "wayland-0"
         socket_file.touch()
         monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
@@ -68,7 +74,7 @@ class TestHasDisplay:
 
     def test_wayland_without_socket_returns_false(self, monkeypatch, tmp_path):
         """WAYLAND_DISPLAY sem socket existente deve retornar False."""
-        self._clean_env(monkeypatch)
+        self._linux_env(monkeypatch)
         monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
         monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
         # socket NÃO existe
